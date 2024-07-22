@@ -189,4 +189,11 @@ void createTTIRToTTNNBackendPipeline(
   pm.addPass(createConvertTTIRToTTNN());
 }
 
+void addTTNIRToTTNNPasses(OpPassManager &pm, bool enableGridSet)
+{
+    mlir::tt::ttnn::TTIRToTTNNBackendPipelineOptions options;
+    options.gridSetPassEnabled = enableGridSet;
+    mlir::tt::ttnn::createTTIRToTTNNBackendPipeline(pm, options);
+}
+
 } // namespace mlir::tt::ttnn

@@ -34,6 +34,11 @@ struct TTIRToTTNNBackendPipelineOptions
 
 void createTTIRToTTNNBackendPipeline(
     OpPassManager &pm, const TTIRToTTNNBackendPipelineOptions &options);
+
+void addTTNIRToTTNNPasses(OpPassManager &pm, bool enableGridSet);
+
 } // namespace mlir::tt::ttnn
+
+
 
 #endif
