@@ -7,6 +7,19 @@
 
 namespace tt::runtime::ttnn::operations::data_movement {
 
+static ::ttnn::Tensor tilize(::ttnn::Tensor const &input) {
+  // NOLINTNEXTLINE
+  return ::ttnn::to_layout(input, ::ttnn::TILE_LAYOUT, std::nullopt,
+                           std::nullopt,
+                           static_cast<::ttnn::Device *>(nullptr));
+}
+
+static ::ttnn::Tensor untilize(::ttnn::Tensor const &input) {
+  return ::ttnn::to_layout(input, ::ttnn::ROW_MAJOR_LAYOUT, std::nullopt,
+                           std::nullopt,
+                           static_cast<::ttnn::Device *>(nullptr));
+}
+
 template <int32_t Rank>
 static std::array<int32_t, Rank>
 vectorToArray(const std::vector<int32_t> &vec) {
@@ -21,7 +34,13 @@ vectorToArray(const std::vector<int32_t> &vec) {
 template <int32_t Rank>
 static ::ttnn::Tensor invoke_reshape(const ::ttnn::Tensor &tensor,
                                      const std::vector<int32_t> &shape) {
-  return ::ttnn::reshape(tensor, vectorToArray<Rank>(shape));
+  if (tensor.get_layout() == ::ttnn::ROW_MAJOR_LAYOUT) {
+    return ::ttnn::reshape(tensor, vectorToArray<Rank>(shape));
+  }
+
+  ::ttnn::Tensor in1 = untilize(tensor);
+  ::ttnn::Tensor out = ::ttnn::reshape(in1, vectorToArray<Rank>(shape));
+  return tilize(out);
 }
 
 void run(const ::tt::target::ttnn::ReshapeOp *op, ProgramContext &context) {
