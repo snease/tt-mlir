@@ -89,6 +89,9 @@ struct ConvertTosaToTTIRPass
     patterns
         .add<TosaToTTIROpConversionPattern<tosa::AddOp, mlir::tt::ttir::AddOp>>(
             typeConverter, &getContext());
+    patterns.add<TosaToTTIROpConversionPattern<tosa::LogicalAndOp,
+                                               mlir::tt::ttir::LogicalAndOp>>(
+        typeConverter, &getContext());
     patterns.add<
         TosaToTTIROpConversionPattern<tosa::MulOp, mlir::tt::ttir::MultiplyOp>>(
         typeConverter, &getContext());

@@ -246,6 +246,13 @@ def TTIR_GreaterEqualOp :  TTIR_ElementwiseBinaryOp<"ge"> {
     }];
 }
 
+def TTIR_LogicalAndOp : TTIR_ElementwiseBinaryOp<"logical_and"> {
+    let summary = "Eltwise logical and.";
+    let description = [{
+      Eltwise logical and operation.
+    }];
+}
+
 def TTIR_MaximumOp :  TTIR_ElementwiseBinaryOp<"maximum"> {
     let summary = "Eltwise maximum OP.";
     let description = [{

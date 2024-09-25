@@ -17,7 +17,7 @@
 #include "ttmlir/Dialect/TT/IR/TTOpsTypes.h"
 #include "ttmlir/Dialect/TTIR/IR/TTIR.h"
 #include "ttmlir/Dialect/TTIR/IR/TTIROps.h"
-
+#include <iostream>
 using namespace mlir;
 using namespace mlir::tt;
 
@@ -34,8 +34,14 @@ public:
   LogicalResult
   matchAndRewrite(SrcOp srcOp, Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
+    LogicalResult err = checkBasicLegality(srcOp, adaptor, rewriter);
+    if (not err.succeeded()) {
+      return err;
+    }
+
     auto outputType = mlir::cast<RankedTensorType>(
         this->getTypeConverter()->convertType(srcOp.getResult().getType()));
+
     tensor::EmptyOp outputTensor = rewriter.create<tensor::EmptyOp>(
         srcOp.getLoc(), outputType.getShape(), outputType.getElementType());
     rewriter.replaceOpWithNewOp<DestOp>(
@@ -47,6 +53,21 @@ public:
             SmallVector<Attribute>(adaptor.getOperands().size() + 1,
                                    rewriter.getAttr<OperandConstraintAttr>(
                                        OperandConstraint::AnyDeviceTile))));
+    return success();
+  }
+
+private:
+  LogicalResult checkBasicLegality(SrcOp &srcOp, Adaptor adaptor,
+                                   ConversionPatternRewriter &rewriter) const {
+    auto outputType = mlir::cast<RankedTensorType>(
+        this->getTypeConverter()->convertType(srcOp.getResult().getType()));
+
+    if (isa<mlir::stablehlo::AndOp>(srcOp) &&
+        !outputType.getElementType().isInteger(1)) {
+      return rewriter.notifyMatchFailure(
+          srcOp, "TTIR only supports logical and for boolean data type.");
+    }
+
     return success();
   }
 };
@@ -343,6 +364,9 @@ void addElementwiseBinaryOpsConversionPatterns(MLIRContext *ctx,
 
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::AddOp, mlir::tt::ttir::AddOp>>(typeConverter, ctx);
+  patterns.add<StableHLOToTTIROpDefaultConversionPattern<
+      mlir::stablehlo::AndOp, mlir::tt::ttir::LogicalAndOp>>(typeConverter,
+                                                             ctx);
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::SubtractOp, mlir::tt::ttir::SubtractOp>>(typeConverter,
                                                                 ctx);

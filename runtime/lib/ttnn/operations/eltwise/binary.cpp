@@ -4,6 +4,7 @@
 #include "binary.h"
 #include "tt/runtime/detail/ttnn.h"
 #include "tt/runtime/ttnn/operations/utils.h"
+#include "ttnn/operations/eltwise/binary/binary.hpp"
 
 namespace tt::runtime::ttnn::operations::binary {
 
@@ -65,6 +66,10 @@ void run(const ::tt::target::ttnn::EltwiseOp *op, ProgramContext &context) {
   /* Eltwise Binary */
   case ::tt::target::ttnn::EltwiseOpType::Add: {
     runEltwiseBinaryOP(op, tensorPool, ::ttnn::add);
+    break;
+  }
+  case ::tt::target::ttnn::EltwiseOpType::LogicalAnd: {
+    runEltwiseBinaryOP(op, tensorPool, ::ttnn::logical_and);
     break;
   }
   case ::tt::target::ttnn::EltwiseOpType::Multiply: {
