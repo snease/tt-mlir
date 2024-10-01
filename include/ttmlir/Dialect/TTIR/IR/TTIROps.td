@@ -288,6 +288,18 @@ def TTIR_LessThanOp : TTIR_ElementwiseBinaryOp<"lt"> {
     }];
 }
 
+def TTIR_ComplexOp : TTIR_ElementwiseBinaryOp<"complex"> {
+    let summary = "Eltwise conversion to complex.";
+    let description = [{
+      Return a complex tensor from two real tensors representing real and imaginary parts.
+
+      Example:
+        %lhs: [1.0, 3.0] --> real part
+        %rhs: [2.0, 4.0] --> imaginary part
+        %result: [(1.0, 2.0), (3.0, 4.0)]
+    }];
+}
+
 def TTIR_MaximumOp :  TTIR_ElementwiseBinaryOp<"maximum"> {
     let summary = "Eltwise maximum OP.";
     let description = [{

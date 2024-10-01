@@ -67,9 +67,9 @@ enum EltwiseOpType: uint32 {
   Typecast = 14,
   Equal = 15,
   NotEqual = 16,
-  GreaterThan = 19,
   LessEqual = 17,
   LessThan = 18,
+  GreaterThan = 19,
 }
 
 table EltwiseOp {
@@ -175,6 +175,11 @@ table MaxPool2dOp {
 table DeallocOp {
   in: tt.target.TensorRef;
 }
+table ComplexOp {
+  lhs: tt.target.TensorRef;
+  rhs: tt.target.TensorRef;
+  out: tt.target.TensorRef;
+}
 
 union OpType {
   GetDeviceOp,
@@ -194,7 +199,8 @@ union OpType {
   ConcatOp,
   ReshapeOp,
   MaxPool2dOp,
-  DeallocOp
+  DeallocOp,
+  ComplexOp
 }
 
 table Operation {

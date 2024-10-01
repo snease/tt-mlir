@@ -321,6 +321,65 @@ private:
   }
 };
 
+class StableHLOToTTIRComplexOpConversionPattern
+    : public OpConversionPattern<mlir::stablehlo::ComplexOp> {
+
+  using OpConversionPattern<mlir::stablehlo::ComplexOp>::OpConversionPattern;
+
+public:
+  LogicalResult
+  matchAndRewrite(mlir::stablehlo::ComplexOp srcOp,
+                  mlir::stablehlo::ComplexOp::Adaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    // Check legality of the operation
+    LogicalResult err = checkBasicLegality(srcOp, adaptor, rewriter);
+    if (failed(err)) {
+      return err;
+    }
+
+    // Create the output tensor type based on inputs
+    auto outputType = mlir::cast<RankedTensorType>(
+        getTypeConverter()->convertType(srcOp.getResult().getType()));
+
+    // Create an empty output tensor with the computed shape
+    tensor::EmptyOp outputTensor = rewriter.create<tensor::EmptyOp>(
+        srcOp.getLoc(), outputType.getShape(), outputType.getElementType());
+
+    // Replace the original ComplexOp with the destination operation
+    rewriter.replaceOpWithNewOp<mlir::tt::ttir::ComplexOp>(
+        srcOp,
+        Value(srcOp.getLhs()), // lhs value
+        Value(srcOp.getRhs()), // rhs value
+        Value(outputTensor),   // output value
+        rewriter.getArrayAttr( // operand constraints
+            SmallVector<Attribute>(adaptor.getOperands().size(),
+                                   rewriter.getAttr<OperandConstraintAttr>(
+                                       OperandConstraint::AnyDeviceTile))));
+    return success();
+  }
+
+private:
+  LogicalResult checkBasicLegality(mlir::stablehlo::ComplexOp &srcOp,
+                                   mlir::stablehlo::ComplexOp::Adaptor adaptor,
+                                   ConversionPatternRewriter &rewriter) const {
+    auto lhsType =
+        mlir::dyn_cast<mlir::RankedTensorType>(srcOp.getLhs().getType());
+    auto rhsType =
+        mlir::dyn_cast<mlir::RankedTensorType>(srcOp.getRhs().getType());
+    if (srcOp.getLhs().getType() != srcOp.getRhs().getType()) {
+      return rewriter.notifyMatchFailure(
+          srcOp, "ComplexOp requires both inputs to have the same type.");
+    }
+    if (lhsType.getShape() != rhsType.getShape()) {
+      return rewriter.notifyMatchFailure(
+          srcOp, "ComplexOp requires both inputs to have the same shape.");
+    }
+
+    return success();
+  }
+};
+
 void addElementwiseUnaryOpsConversionPatterns(MLIRContext *ctx,
                                               RewritePatternSet &patterns,
                                               TypeConverter &typeConverter) {
@@ -391,6 +450,13 @@ void addBroadcastOpConversionPattern(MLIRContext *ctx,
                                                                  ctx);
 }
 
+void addComplexOpConversionPattern(MLIRContext *ctx,
+                                   RewritePatternSet &patterns,
+                                   TypeConverter &typeConverter) {
+
+  patterns.add<StableHLOToTTIRComplexOpConversionPattern>(typeConverter, ctx);
+}
+
 } // namespace
 
 namespace mlir::tt {
@@ -405,6 +471,7 @@ void populateStableHLOToTTIRPatterns(MLIRContext *ctx,
   addMatmulOpsConversionPatterns(ctx, patterns, typeConverter);
   addTensorCreationOpsConversionPatterns(ctx, patterns, typeConverter);
   addBroadcastOpConversionPattern(ctx, patterns, typeConverter);
+  addComplexOpConversionPattern(ctx, patterns, typeConverter);
 }
 
 } // namespace mlir::tt

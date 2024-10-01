@@ -251,6 +251,13 @@ def TTNN_LessThanOp : TTNN_ElementwiseBinaryOp<"lt"> {
     }];
 }
 
+def TTNN_ComplexOp : TTNN_ElementwiseBinaryOp<"complex"> {
+    let summary = "Eltwise conversion to complex.";
+    let description = [{
+      Eltwise greater than operation.
+    }];
+}
+
 def TTNN_MaximumOp :  TTNN_ElementwiseBinaryOp<"maximum"> {
     let summary = "Eltwise maximum OP.";
     let description = [{
