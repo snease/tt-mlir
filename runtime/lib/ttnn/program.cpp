@@ -5,6 +5,7 @@
 #include "operations/conv/conv2d.h"
 #include "operations/creation/empty.h"
 #include "operations/creation/full.h"
+#include "operations/data_movement/complex.h"
 #include "operations/data_movement/concat.h"
 #include "operations/data_movement/reshape.h"
 #include "operations/data_movement/transpose.h"
@@ -103,6 +104,9 @@ void ProgramExecutor::runOperation(const ::tt::target::ttnn::Operation *op) {
   }
   case ::tt::target::ttnn::OpType::MaxPool2dOp: {
     return operations::pool::run(op->type_as_MaxPool2dOp(), context);
+  }
+  case ::tt::target::ttnn::OpType::ComplexOp: {
+    return operations::data_movement::run(op->type_as_ComplexOp(), context);
   }
   default: {
     throw std::runtime_error("Unsupported operation type");
