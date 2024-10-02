@@ -338,6 +338,31 @@ public:
   }
 };
 
+class ComplexOpConversionPattern : public OpConversionPattern<ttir::ComplexOp> {
+public:
+  using OpConversionPattern<ttir::ComplexOp>::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(ttir::ComplexOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    // Retrieve the result type of the first result
+    auto firstResultType = op.getType(0);
+
+    // Check that all result types match the first result type
+    for (unsigned i = 1; i < op.getNumResults(); ++i) {
+      if (op.getType(i) != firstResultType) {
+        return rewriter.notifyMatchFailure(
+            op, "Result types do not match the first result type");
+      }
+    }
+
+    rewriter.replaceOpWithNewOp<ttnn::ComplexOp>(
+        op, this->getTypeConverter()->convertType(firstResultType),
+        adaptor.getInputs(), adaptor.getOutputs());
+    return success();
+  }
+};
+
 class ReshapeOpConversionPattern : public OpConversionPattern<ttir::ReshapeOp> {
 public:
   using OpConversionPattern<ttir::ReshapeOp>::OpConversionPattern;
@@ -690,7 +715,8 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            ConstantOpConversionPattern,
            MatmulOpConversionPattern,
            Conv2dOpConversionPattern,
-           MaxPool2dOpConversionPattern
+           MaxPool2dOpConversionPattern,
+           ConcatOpConversionPattern
            >(typeConverter, ctx);
   // ANCHOR_END: op_rewriter_pattern_set
   // clang-format on
