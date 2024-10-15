@@ -783,6 +783,9 @@ void addElementwiseBinaryOpsConversionPatterns(MLIRContext *ctx,
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::AddOp, mlir::tt::ttir::AddOp>>(typeConverter, ctx);
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
+      mlir::stablehlo::XorOp, mlir::tt::ttir::LogicalXorOp>>(typeConverter,
+                                                             ctx);
+  patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::SubtractOp, mlir::tt::ttir::SubtractOp>>(typeConverter,
                                                                 ctx);
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
