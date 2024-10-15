@@ -324,11 +324,16 @@ def TTIR_LogicalOrOp : TTIR_ElementwiseBinaryOp<"logical_or"> {
     }];
 }
 
-def TTIR_LogicalXorOp : TTIR_ElementwiseBinaryOp<"logical_xor"> {
+def TTIR_LogicalXorOp : TTIR_Op<"logical_xor"> {
     let summary = "Eltwise logical xor.";
     let description = [{
       Eltwise logical xor operation.
     }];
+
+    let arguments = (ins Variadic<AnyRankedTensor>:$inputs,
+                         TT_OperandConstraintArrayAttr:$operand_constraints);
+
+    let results = (outs AnyRankedTensor:$result);
 }
 
 def TTIR_MaximumOp :  TTIR_ElementwiseBinaryOp<"maximum"> {

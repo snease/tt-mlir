@@ -699,6 +699,30 @@ public:
   }
 };
 
+// template <typename TTIROpTy, typename TTNNOpTy,
+//         typename OpAdaptor = typename TTIROpTy::Adaptor>
+class LogicalXorOpConversionPattern
+    : public OpConversionPattern<ttir::LogicalXorOp> {
+public:
+  using OpConversionPattern<ttir::LogicalXorOp>::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(ttir::LogicalXorOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    SmallVector<Type> resultTypes;
+    if (failed(this->getTypeConverter()->convertTypes(op->getResultTypes(),
+                                                      resultTypes))) {
+      return failure();
+    }
+    // op->getOpResults()
+    Value device = getOrInsertDevice(rewriter, op);
+
+    rewriter.replaceOpWithNewOp<ttnn::LogicalXorOp>(op, resultTypes, device,
+                                                    adaptor.getInputs());
+    return success();
+  }
+};
+
 namespace mlir::tt {
 
 void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
@@ -713,7 +737,7 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            ElementwiseOpConversionPattern<ttir::LogicalAndOp, ttnn::LogicalAndOp>,
            ElementwiseOpConversionPattern<ttir::LogicalOrOp, ttnn::LogicalOrOp>,
            ElementwiseOpConversionPattern<ttir::LogicalNotOp, ttnn::LogicalNotOp>,
-           ElementwiseOpConversionPattern<ttir::LogicalXorOp, ttnn::LogicalXorOp>,
+           //ElementwiseOpConversionPattern<ttir::LogicalXorOp, ttnn::LogicalXorOp>,
            ElementwiseOpConversionPattern<ttir::MultiplyOp, ttnn::MultiplyOp>,
            ElementwiseOpConversionPattern<ttir::EqualOp, ttnn::EqualOp>,
            ElementwiseOpConversionPattern<ttir::NotEqualOp, ttnn::NotEqualOp>,
@@ -746,7 +770,8 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            MatmulOpConversionPattern,
            Conv2dOpConversionPattern,
            MaxPool2dOpConversionPattern,
-           SubtractOpConversionPattern
+           SubtractOpConversionPattern,
+           LogicalXorOpConversionPattern
            >(typeConverter, ctx);
   // ANCHOR_END: op_rewriter_pattern_set
   // clang-format on

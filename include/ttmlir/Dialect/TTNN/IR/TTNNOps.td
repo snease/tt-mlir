@@ -272,11 +272,16 @@ def TTNN_LogicalOrOp : TTNN_ElementwiseBinaryOp<"logical_or"> {
     }];
 }
 
-def TTNN_LogicalXorOp : TTNN_ElementwiseBinaryOp<"logical_xor"> {
+def TTNN_LogicalXorOp : TTNN_Op<"logical_xor"> {
     let summary = "Eltwise logical xor.";
     let description = [{
       Eltwise logical xor operation.
     }];
+
+    let arguments = (ins TT_Device:$device, Variadic<AnyRankedTensor>:$inputs
+                          );
+
+    let results = (outs AnyRankedTensor:$result);
 }
 
 def TTNN_MaximumOp :  TTNN_ElementwiseBinaryOp<"maximum"> {

@@ -254,8 +254,6 @@ createEltwiseOp(FlatbufferObjectCache &cache, EltwiseOp op) {
     type = ::tt::target::ttnn::EltwiseOpType::LogicalNot;
   } else if constexpr (std::is_same_v<EltwiseOp, LogicalOrOp>) {
     type = ::tt::target::ttnn::EltwiseOpType::LogicalOr;
-  } else if constexpr (std::is_same_v<EltwiseOp, LogicalXorOp>) {
-    type = ::tt::target::ttnn::EltwiseOpType::LogicalXor;
   } else if constexpr (std::is_same_v<EltwiseOp, MultiplyOp>) {
     type = ::tt::target::ttnn::EltwiseOpType::Multiply;
   } else if constexpr (std::is_same_v<EltwiseOp, NegOp>) {
@@ -423,6 +421,26 @@ createDeallocOp(FlatbufferObjectCache &cache, DeallocOp op) {
   return ::tt::target::ttnn::CreateDeallocOp(*cache.fbb, in);
 }
 
+template <typename EltwiseOp>
+::flatbuffers::Offset<::tt::target::ttnn::EltwiseOp>
+createLogicalXorOp(FlatbufferObjectCache &cache, EltwiseOp op) {
+  ::tt::target::ttnn::EltwiseOpType type;
+  if constexpr (std::is_same_v<EltwiseOp, LogicalXorOp>) {
+    type = ::tt::target::ttnn::EltwiseOpType::LogicalXor;
+  } else {
+    llvm_unreachable("unhandled EltwiseOp");
+  }
+  std::vector<::flatbuffers::Offset<::tt::target::TensorRef>> ins;
+  for (auto input : op.getInputs()) {
+    ins.push_back(
+        cache.at<::tt::target::TensorRef>(getOperandThroughDPSOps(input)));
+  }
+  auto output = cache.at<::tt::target::TensorRef>(
+      getOperandThroughDPSOps(op.getResult()));
+  return ::tt::target::ttnn::CreateEltwiseOpDirect(*cache.fbb, type, &ins,
+                                                   output);
+}
+
 ::flatbuffers::Offset<::tt::target::ttnn::Operation>
 emitTTNNOperation(FlatbufferObjectCache &cache, Operation *op,
                   std::string const &debugString) {
@@ -465,7 +483,8 @@ emitTTNNOperation(FlatbufferObjectCache &cache, Operation *op,
     return createOperation(cache, createEltwiseOp(cache, orOp), debugString);
   }
   if (auto xorOp = dyn_cast<LogicalXorOp>(op); xorOp) {
-    return createOperation(cache, createEltwiseOp(cache, xorOp), debugString);
+    return createOperation(cache, createLogicalXorOp(cache, xorOp),
+                           debugString);
   }
   if (auto multiplyOp = dyn_cast<MultiplyOp>(op); multiplyOp) {
     return createOperation(cache, createEltwiseOp(cache, multiplyOp),
