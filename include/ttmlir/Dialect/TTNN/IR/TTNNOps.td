@@ -284,6 +284,25 @@ def TTNN_MaximumOp :  TTNN_ElementwiseBinaryOp<"maximum"> {
     }];
 }
 
+def TTNN_PowerOp : TTNN_ElementwiseBinaryOp<"power"> {
+    let summary = "Eltwise power OP.";
+    let description = [{
+      Performs element-wise exponentiation of lhs tensor by rhs tensor and produces a
+      result tensor. Tensors must be of same shape.
+
+      Example:
+      ```
+        %result = "ttnn.power"(%lhs, %rhs) : (tensor<6xf64>, tensor<6xf64>) -> tensor<6xf64>
+
+        %lhs: [-2.0, -0.0, -36.0, 5.0, 3.0, 10000.0]
+        %rhs: [2.0, 2.0, 1.1, 2.0, -1.0, 10.0]
+        %result: [4.0, 0.0, -nan, 25.0, 0.333333343, inf]
+      ```
+    }];
+
+    let hasVerifier = 1;
+}
+
 class TTNN_ReductionOp<string mnemonic, list<Trait> traits = []> : TTNN_Op<mnemonic, traits> {
     let summary = "Reduction op.";
     let description = [{

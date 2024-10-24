@@ -8,6 +8,8 @@
 #include "ttmlir/Dialect/TTNN/Utils/Utils.h"
 #include "ttmlir/Utils.h"
 
+#include <cassert>
+#include <llvm/Support/LogicalResult.h>
 #include <optional>
 
 #include "mlir/Dialect/Traits.h"
@@ -749,6 +751,34 @@ static bool isValidDeviceLayout(::mlir::tt::TensorMemoryLayout layout) {
   if (dim >= inputType.getRank() || dim < -inputType.getRank()) {
     return emitOpError(
         "Dimension attribute must be within the bounds of the input tensor");
+  }
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// PowerOp
+//===----------------------------------------------------------------------===//
+
+::mlir::LogicalResult mlir::tt::ttnn::PowerOp::verify() {
+  assert(getNumOperands() == 2 && "Expected exactly two inputs.");
+
+  // Get the second operand
+  ::mlir::RankedTensorType secondOperandType =
+      mlir::cast<::mlir::RankedTensorType>(getInputs().back().getType());
+
+  // Get the rank of the tensor and ensure it's a 1D vector
+  if (secondOperandType.getRank() != 1) {
+    return emitOpError("Expected the second operand to be a 1D vector.");
+  }
+
+  // Check that the single dimension is of size 1 (i.e., a vector with one
+  // element)
+  ::llvm::ArrayRef<int64_t> shape = secondOperandType.getShape();
+
+  if (shape[0] != 1) {
+    return emitOpError(
+        "Expected the second operand to be a vector with exactly one element.");
   }
 
   return success();
