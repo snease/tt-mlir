@@ -374,11 +374,23 @@ jobs:
         source env/activate
         pytest -ssv runtime/tools/python/test/test_read.py
 
+    - name: Upload read results
+      uses: actions/upload-artifact@v4
+      with:
+        name: read_results.json
+        path: read_results.json
+
     - name: ttrt query tests
       shell: bash
       run: |
         source env/activate
         pytest -ssv runtime/tools/python/test/test_query.py
+
+    - name: Upload query results
+      uses: actions/upload-artifact@v4
+      with:
+        name: query_results.json
+        path: query_results.json
 
     - name: ttrt check tests
       shell: bash
@@ -386,14 +398,32 @@ jobs:
         source env/activate
         pytest -ssv runtime/tools/python/test/test_check.py
 
+    - name: Upload check results
+      uses: actions/upload-artifact@v4
+      with:
+        name: check_results.json
+        path: check_results.json
+
     - name: ttrt run tests
       shell: bash
       run: |
         source env/activate
         pytest -ssv runtime/tools/python/test/test_run.py
 
+    - name: Upload run results
+      uses: actions/upload-artifact@v4
+      with:
+        name: run_results.json
+        path: run_results.json
+
     - name: ttrt perf tests
       shell: bash
       run: |
         source env/activate
         pytest -ssv runtime/tools/python/test/test_perf.py
+
+    - name: Upload perf results
+      uses: actions/upload-artifact@v4
+      with:
+        name: perf_results.json
+        path: perf_results.json
