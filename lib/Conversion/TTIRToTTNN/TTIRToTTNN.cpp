@@ -134,17 +134,19 @@ class ToLayoutOpConversionPattern
 public:
   using OpConversionPattern<ttir::ToLayoutOp>::OpConversionPattern;
 
+  bool shouldForceRowMajor(ttir::ToLayoutOp op) const {
+    for (mlir::Operation *user : op.getResult().getUsers()) {
+      if (isa<ttir::Conv2dOp>(user) || isa<ttir::MaxPool2dOp>(user)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   LogicalResult
   matchAndRewrite(ttir::ToLayoutOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
-    // Get the DPS operand and delete it's creator op, if it's tensor::emptyOp
-    //
-    Value dpsOperand = adaptor.getOperands().back();
-    ttnn::EmptyOp emptyOp = dpsOperand.getDefiningOp<ttnn::EmptyOp>();
-    if (emptyOp) {
-      rewriter.eraseOp(emptyOp);
-    }
 
     // Find device to be used for the tensor
     //
@@ -175,11 +177,14 @@ public:
       dtype = elementTypeToDataType(elementType);
     }
 
-    // TODO(bug #665):
-    // Binary ops fail with row major layout in ttnn, defaulting to tile
-    // layout for all ops...
+    // TODO(bug #875):
+    // Remove the following code block once constraints modelling is implemented
+    // on dialect level
     //
-    ttnnLayoutEnum = ttnn::Layout::Tile;
+    // Default to Tile layout unless op supports only RowMajor layout
+    //
+    ttnnLayoutEnum =
+        shouldForceRowMajor(op) ? ttnn::Layout::RowMajor : ttnn::Layout::Tile;
 
     // Map TT::MemorySpace to TTNN::BufferType
     //
@@ -267,7 +272,7 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<TTNNOpTy>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), adaptor.getKeepDim(),
+        adaptor.getInput(), adaptor.getKeepDim(),
         adaptor.getDimArg().value_or(nullptr));
     return success();
   }
@@ -283,7 +288,7 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<ttnn::EmbeddingOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getWeight(), adaptor.getOutput());
+        adaptor.getInput(), adaptor.getWeight());
 
     return success();
   }
@@ -298,7 +303,7 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<ttnn::SoftmaxOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), adaptor.getDimension());
+        adaptor.getInput(), adaptor.getDimension());
     return success();
   }
 };
@@ -313,8 +318,7 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<ttnn::TransposeOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), adaptor.getDim0(),
-        adaptor.getDim1());
+        adaptor.getInput(), adaptor.getDim0(), adaptor.getDim1());
     return success();
   }
 };
@@ -347,7 +351,22 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<ttnn::ReshapeOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), adaptor.getShape());
+        adaptor.getInput(), adaptor.getShape());
+    return success();
+  }
+};
+
+class SliceOpConversionPattern : public OpConversionPattern<ttir::SliceOp> {
+public:
+  using OpConversionPattern<ttir::SliceOp>::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(ttir::SliceOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<ttnn::SliceOp>(
+        op, this->getTypeConverter()->convertType(op.getType()),
+        adaptor.getInput(), adaptor.getOutput(), adaptor.getBegins(),
+        adaptor.getEnds(), adaptor.getStep());
     return success();
   }
 };
@@ -388,7 +407,7 @@ public:
     // Replace the SqueezeOp with a ReshapeOp
     rewriter.replaceOpWithNewOp<ttnn::ReshapeOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), shapeAttr);
+        adaptor.getInput(), shapeAttr);
 
     return success();
   }
@@ -432,7 +451,7 @@ public:
     // Replace the UnsqueezeOp with a ReshapeOp
     rewriter.replaceOpWithNewOp<ttnn::ReshapeOp>(
         op, this->getTypeConverter()->convertType(op.getType()),
-        adaptor.getInput(), adaptor.getOutput(), shapeAttr);
+        adaptor.getInput(), shapeAttr);
 
     return success();
   }
@@ -710,6 +729,9 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            ToLayoutOpConversionPattern,
            ElementwiseOpConversionPattern<ttir::AbsOp, ttnn::AbsOp>,
            ElementwiseOpConversionPattern<ttir::AddOp, ttnn::AddOp>,
+           ElementwiseOpConversionPattern<ttir::LogicalAndOp, ttnn::LogicalAndOp>,
+           ElementwiseOpConversionPattern<ttir::LogicalOrOp, ttnn::LogicalOrOp>,
+           ElementwiseOpConversionPattern<ttir::LogicalNotOp, ttnn::LogicalNotOp>,
            ElementwiseOpConversionPattern<ttir::MultiplyOp, ttnn::MultiplyOp>,
            ElementwiseOpConversionPattern<ttir::EqualOp, ttnn::EqualOp>,
            ElementwiseOpConversionPattern<ttir::NotEqualOp, ttnn::NotEqualOp>,
@@ -736,6 +758,7 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            TransposeOpConversionPattern,
            ConcatOpConversionPattern,
            ReshapeOpConversionPattern,
+           SliceOpConversionPattern,
            SqueezeOpConversionPattern,
            UnsqueezeOpConversionPattern,
            ConstantOpConversionPattern,

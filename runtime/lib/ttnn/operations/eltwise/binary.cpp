@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "binary.h"
+#include "tt/runtime/detail/logger.h"
 #include "tt/runtime/detail/ttnn.h"
 #include "tt/runtime/ttnn/operations/utils.h"
 
@@ -14,6 +15,8 @@ getEltwiseBinaryOPInputTensors(const ::tt::target::ttnn::EltwiseOp *op,
   assert(op->ins()->size() == 2 && "Expected 2 inputs");
   *lhs = &(tensorPool.at(op->ins()->Get(0)->global_id()));
   *rhs = &(tensorPool.at(op->ins()->Get(1)->global_id()));
+  DEBUG_ASSERT((*lhs)->is_allocated());
+  DEBUG_ASSERT((*rhs)->is_allocated());
 
   // Switch the order of operands if the second operand requires broadcast
   if ((*rhs)->volume() < (*lhs)->volume()) {
@@ -70,6 +73,14 @@ void run(const ::tt::target::ttnn::EltwiseOp *op, ProgramContext &context) {
   /* Eltwise Binary */
   case ::tt::target::ttnn::EltwiseOpType::Add: {
     runEltwiseBinaryOP(op, tensorPool, ::ttnn::add);
+    break;
+  }
+  case ::tt::target::ttnn::EltwiseOpType::LogicalAnd: {
+    runEltwiseBinaryOP(op, tensorPool, ::ttnn::logical_and);
+    break;
+  }
+  case ::tt::target::ttnn::EltwiseOpType::LogicalOr: {
+    runEltwiseBinaryOP(op, tensorPool, ::ttnn::logical_or);
     break;
   }
   case ::tt::target::ttnn::EltwiseOpType::Multiply: {

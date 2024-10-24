@@ -1,5 +1,7 @@
 include(ExternalProject)
 
+set(TT_METAL_VERSION "047cdd97fa26b229208ce2f6f8b149c3df277be0")
+
 if ("$ENV{ARCH_NAME}" STREQUAL "grayskull")
   set(ARCH_NAME "grayskull")
   set(ARCH_EXTRA_DIR "grayskull")
@@ -13,6 +15,7 @@ else()
   message(FATAL_ERROR "Unsupported ARCH_NAME: $ENV{ARCH_NAME}")
 endif()
 
+set(METAL_INSTALL_PREFIX "/localdev/mtopalovic/src/tt-mlir/third_party/tt-metal/src/tt-metal-build/")
 set(TTMETAL_INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/third_party/tt-metal/src/tt-metal/ttnn/cpp
   ${PROJECT_SOURCE_DIR}/third_party/tt-metal/src/tt-metal/ttnn/cpp/ttnn/deprecated
@@ -52,6 +55,7 @@ ExternalProject_Add(
   PREFIX ${TTMLIR_SOURCE_DIR}/third_party/tt-metal
   CMAKE_GENERATOR Ninja
   CMAKE_ARGS
+    -CMAKE_INSTALL_DIR=${METAL_INSTALL_PREFIX}
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${METAL_INSTALL_PREFIX}
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

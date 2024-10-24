@@ -6,6 +6,7 @@
 
 #include "mlir/Pass/PassManager.h"
 
+#include "mlir/Transforms/Passes.h"
 #include "ttmlir/Conversion/Passes.h"
 #include "ttmlir/Dialect/TTIR/Transforms/Passes.h"
 #include "ttmlir/Dialect/TTNN/Transforms/Passes.h"
@@ -19,11 +20,17 @@ void createTTNNPipelineTTIRPasses(
     OpPassManager &pm, const TTIRToTTNNBackendPipelineOptions &options) {
   ttir::TTIRLoadSystemDescOptions systemDescOptions;
   systemDescOptions.path = options.systemDescPath;
+
+  // Inlines all private functions. I.e flattens the program into the main
+  // function. Removes all private functions.
+  pm.addPass(mlir::createInlinerPass());
+
   pm.addPass(mlir::tt::ttir::createTTIRSlidingWindow2dFixShapes());
   pm.addPass(mlir::tt::ttir::createTTIRLoadSystemDesc(systemDescOptions));
 
   ttir::TTIRImplicitDeviceOptions implicitDeviceOptions;
-  implicitDeviceOptions.meshShape = options.meshShape;
+  implicitDeviceOptions.meshShape = ::llvm::SmallVector<int64_t>(
+      options.meshShape.begin(), options.meshShape.end());
   pm.addPass(mlir::tt::ttir::createTTIRImplicitDevice(implicitDeviceOptions));
   mlir::tt::ttir::TTIRLayoutOptions layoutOptions;
   layoutOptions.initMemorySpace = mlir::tt::MemorySpace::System;
@@ -36,16 +43,23 @@ void createTTNNPipelineTTIRPasses(
 void createTTNNPipelineAnalysisPasses(
     OpPassManager &pm, const TTIRToTTNNBackendPipelineOptions &options) {
   if (options.optimizerPassEnabled) {
-    ttir::TTIROptimizerOptions optimizerOptions;
+    ttnn::TTNNOptimizerOptions optimizerOptions;
     optimizerOptions.overrideOutputLayout = options.overrideOutputLayout;
     optimizerOptions.shardingPassEnabled = options.shardingPassEnabled;
-    pm.addPass(mlir::tt::ttir::createTTIROptimizer(optimizerOptions));
+    optimizerOptions.maxLegalLayouts = options.maxLegalLayouts;
+    pm.addPass(mlir::tt::ttnn::createTTNNOptimizer(optimizerOptions));
   }
+
+  // Dealloc pass for tensor memory deallocation after last use.
+  pm.addPass(createTTNNDeallocate());
 }
 
 void createTTNNPipelineLoweringPasses(
     OpPassManager &pm, const TTIRToTTNNBackendPipelineOptions &options) {
+  // Add pass to convert TTIR to TTNN.
   pm.addPass(createConvertTTIRToTTNNPass());
+  // Add pass to remove unused values.
+  pm.addPass(mlir::createRemoveDeadValuesPass());
 }
 
 void createTTNNPipelineTTIRPassesFromString(OpPassManager &pm,
@@ -72,8 +86,8 @@ void createTTNNPipelineLoweringPassesFromString(OpPassManager &pm,
 void createTTIRToTTNNBackendPipeline(
     OpPassManager &pm, const TTIRToTTNNBackendPipelineOptions &options) {
   createTTNNPipelineTTIRPasses(pm, options);
-  createTTNNPipelineAnalysisPasses(pm, options);
   createTTNNPipelineLoweringPasses(pm, options);
+  createTTNNPipelineAnalysisPasses(pm, options);
 }
 
 //===----------------------------------------------------------------------===//

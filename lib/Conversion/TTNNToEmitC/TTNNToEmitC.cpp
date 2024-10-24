@@ -514,6 +514,7 @@ void populateTTNNToEmitCPatterns(mlir::MLIRContext *ctx,
   //
   patterns.add<ToLayoutOpConversionPattern,
                DefaultOpConversionPattern<ttnn::ToMemoryConfigOp>,
+               DefaultOpConversionPattern<ttnn::DeallocOp>,
                ToDeviceOpConversionPattern, FromDeviceOpConversionPattern>(
       typeConverter, ctx);
 
@@ -526,6 +527,7 @@ void populateTTNNToEmitCPatterns(mlir::MLIRContext *ctx,
   // Eltwise unary ops
   //
   patterns.add<DefaultOpConversionPattern<ttnn::AbsOp>,
+               DefaultOpConversionPattern<ttnn::LogicalNotOp>,
                DefaultOpConversionPattern<ttnn::NegOp>,
                DefaultOpConversionPattern<ttnn::ReluOp>,
                DefaultOpConversionPattern<ttnn::SqrtOp>,
@@ -538,6 +540,8 @@ void populateTTNNToEmitCPatterns(mlir::MLIRContext *ctx,
   // Eltwise binary ops
   //
   patterns.add<DefaultOpConversionPattern<ttnn::AddOp>,
+               DefaultOpConversionPattern<ttnn::LogicalAndOp>,
+               DefaultOpConversionPattern<ttnn::LogicalOrOp>,
                DefaultOpConversionPattern<ttnn::SubtractOp>,
                MultiplyOpConversionPattern,
                DefaultOpConversionPattern<ttnn::EqualOp>,
@@ -553,7 +557,8 @@ void populateTTNNToEmitCPatterns(mlir::MLIRContext *ctx,
   //
   patterns.add<DefaultOpConversionPattern<ttnn::TransposeOp>,
                DefaultOpConversionPattern<ttnn::ConcatOp>,
-               DefaultOpConversionPattern<ttnn::ReshapeOp>>(typeConverter, ctx);
+               DefaultOpConversionPattern<ttnn::ReshapeOp>,
+               DefaultOpConversionPattern<ttnn::SliceOp>>(typeConverter, ctx);
 
   // Matmul ops
   //

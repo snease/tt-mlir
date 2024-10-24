@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 #include "unary.h"
+#include "tt/runtime/detail/logger.h"
 #include "tt/runtime/detail/ttnn.h"
 #include "tt/runtime/ttnn/operations/utils.h"
 #include "ttnn/operations/copy.hpp"
@@ -12,8 +13,10 @@ static void
 getEltwiseUnaryOPInputTensor(const ::tt::target::ttnn::EltwiseOp *op,
                              ProgramTensorPool &tensorPool,
                              ::ttnn::Tensor **in) {
-  assert(op->ins()->size() == 1 && "Expected 1 input");
+  LOG_ASSERT(op->ins()->size() == 1, "Expected 1 input, got ",
+             op->ins()->size());
   *in = &(tensorPool.at(op->ins()->Get(0)->global_id()));
+  DEBUG_ASSERT((*in)->is_allocated());
 }
 
 static void runEltwiseUnaryOP(
@@ -67,11 +70,14 @@ static void runTypecastOp(const ::tt::target::ttnn::EltwiseOp *op,
 }
 
 void run(const ::tt::target::ttnn::EltwiseOp *op, ProgramContext &context) {
-  assert(isUnaryOp(op) && "Expected binary operation");
   ProgramTensorPool &tensorPool = context.getTensorPool();
   switch (op->type()) {
   case ::tt::target::ttnn::EltwiseOpType::Abs: {
     runEltwiseUnaryOP(op, tensorPool, ::ttnn::abs);
+    break;
+  }
+  case ::tt::target::ttnn::EltwiseOpType::LogicalNot: {
+    runEltwiseUnaryOP(op, tensorPool, ::ttnn::logical_not);
     break;
   }
   case ::tt::target::ttnn::EltwiseOpType::Neg: {

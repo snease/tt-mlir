@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "tt/runtime/runtime.h"
 #include "tt/runtime/detail/debug.h"
+#include "tt/runtime/detail/logger.h"
 #include "tt/runtime/detail/ttnn.h"
 #include "tt/runtime/ttnn/utils.h"
 #include "tt/runtime/utils.h"
 #include "ttmlir/Target/TTNN/Target.h"
 #include "ttmlir/Version.h"
-
 namespace tt::runtime::ttnn {
 
 using ::tt::runtime::DeviceRuntime;
@@ -117,13 +117,13 @@ Event submit(Device deviceHandle, Binary executableHandle,
   std::vector<::ttnn::Tensor *> inputs;
   inputs.reserve(inputHandles.size());
   for (auto &input : inputHandles) {
-    assert(input.matchesRuntime(DeviceRuntime::TTNN));
+    LOG_ASSERT(input.matchesRuntime(DeviceRuntime::TTNN));
     inputs.push_back(static_cast<::ttnn::Tensor *>(input.handle.get()));
   }
   std::vector<::ttnn::Tensor *> outputs;
   outputs.reserve(outputHandles.size());
   for (auto &output : outputHandles) {
-    assert(output.matchesRuntime(DeviceRuntime::TTNN));
+    LOG_ASSERT(output.matchesRuntime(DeviceRuntime::TTNN));
     outputs.push_back(static_cast<::ttnn::Tensor *>(output.handle.get()));
   }
   tt::runtime::ttnn::runProgram(meshDevice, fbb.programs()->Get(programIndex),
@@ -133,7 +133,7 @@ Event submit(Device deviceHandle, Binary executableHandle,
 
 void wait(Event event) {
   // Not implemented
-  assert(event.matchesRuntime(DeviceRuntime::TTNN));
+  LOG_ASSERT(event.matchesRuntime(DeviceRuntime::TTNN));
 }
 
 } // namespace tt::runtime::ttnn

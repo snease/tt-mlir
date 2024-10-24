@@ -217,6 +217,13 @@ def TTIR_NegOp: TTIR_ElementwiseUnaryOp<"neg"> {
     }];
 }
 
+def TTIR_LogicalNotOp: TTIR_ElementwiseUnaryOp<"logical_not"> {
+    let summary = "Eltwise logical not op.";
+    let description = [{
+      Eltwise logical not operation.
+    }];
+}
+
 def TTIR_ReciprocalOp : TTIR_ElementwiseUnaryOp<"reciprocal"> {
     let summary = "Eltwise reciprocal.";
     let description = [{
@@ -300,6 +307,20 @@ def TTIR_LessThanOp : TTIR_ElementwiseBinaryOp<"lt"> {
     let summary = "Eltwise less than.";
     let description = [{
       Eltwise less than operation.
+    }];
+}
+
+def TTIR_LogicalAndOp : TTIR_ElementwiseBinaryOp<"logical_and"> {
+    let summary = "Eltwise logical and.";
+    let description = [{
+      Eltwise logical and operation.
+    }];
+}
+
+def TTIR_LogicalOrOp : TTIR_ElementwiseBinaryOp<"logical_or"> {
+    let summary = "Eltwise logical or.";
+    let description = [{
+      Eltwise logical or operation.
     }];
 }
 
@@ -557,6 +578,29 @@ def TTIR_ReshapeOp: TTIR_DPSOp<"reshape"> {
     let arguments = (ins AnyRankedTensor:$input,
                          AnyRankedTensor:$output,
                          I32ArrayAttr:$shape,
+                         TT_OperandConstraintArrayAttr:$operand_constraints);
+
+    let results = (outs AnyRankedTensor:$result);
+
+    let extraClassDeclaration = [{
+      MutableOperandRange getDpsInitsMutable() { return getOutputMutable(); }
+    }];
+
+    let hasVerifier = 1;
+}
+
+def TTIR_SliceOp: TTIR_DPSOp<"slice"> {
+    let summary = "Slice op.";
+    let description = [{
+      Extract a portion of a tensor based on the specified start (`begins`), stop (`ends`), and step
+      indices for each dimension.
+    }];
+
+    let arguments = (ins AnyRankedTensor:$input,
+                         AnyRankedTensor:$output,
+                         I32ArrayAttr:$begins,
+                         I32ArrayAttr:$ends,
+                         I32ArrayAttr:$step,
                          TT_OperandConstraintArrayAttr:$operand_constraints);
 
     let results = (outs AnyRankedTensor:$result);
