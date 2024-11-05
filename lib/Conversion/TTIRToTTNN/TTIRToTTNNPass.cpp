@@ -14,6 +14,7 @@
 #include "ttmlir/Dialect/TTNN/IR/TTNN.h"
 #include "ttmlir/Dialect/TTNN/IR/TTNNOps.h"
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include "ttmlir/Conversion/TTIRToTTIRDecomposition/TTIRToTTIRDecomposition.h"
 
 using namespace mlir;
 using namespace mlir::tt;
@@ -41,6 +42,7 @@ struct ConvertTTIRToTTNNPass
     typeConverter.addConversion([](Type type) { return type; });
 
     RewritePatternSet patterns(&getContext());
+    populateTTIRToTTIRDecompositionPatterns(&getContext(), patterns, typeConverter);
     populateTTIRToTTNNPatterns(&getContext(), patterns, typeConverter);
 
     // Apply full conversion

@@ -181,6 +181,32 @@ public:
   }
 };
 
+class StableHLOToBatchNormInferenceOpConversionPattern
+    : public OpConversionPattern<mlir::stablehlo::BatchNormInferenceOp> {
+
+  using OpConversionPattern<
+      mlir::stablehlo::BatchNormInferenceOp>::OpConversionPattern;
+
+public:
+  LogicalResult
+  matchAndRewrite(mlir::stablehlo::BatchNormInferenceOp srcOp,
+                  mlir::stablehlo::BatchNormInferenceOp::Adaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto outputType = mlir::cast<RankedTensorType>(
+         getTypeConverter()->convertType(srcOp.getResult().getType()));
+    tensor::EmptyOp outputTensor = rewriter.create<tensor::EmptyOp>(
+        srcOp.getLoc(), outputType.getShape(), outputType.getElementType());
+    mlir::Type floatType = mlir::FloatType::getF32(getContext());
+    mlir::Type integerType = mlir::IntegerType::get(getContext(), 32);
+    mlir::FloatAttr epsilonAttr = mlir::FloatAttr::get(floatType, srcOp.getEpsilon());
+    mlir::IntegerAttr dimensionAttr = mlir::IntegerAttr::get(integerType, srcOp.getFeatureIndex());
+    rewriter.replaceOpWithNewOp<mlir::tt::ttir::BatchNormInferenceOp>(
+        srcOp, outputType, srcOp->getOperand(0), srcOp->getOperand(1),
+        srcOp->getOperand(2), srcOp->getOperand(3), srcOp->getOperand(4),
+        epsilonAttr, dimensionAttr, outputTensor);
+    return success();
+  }
+};
 class StableHLOToTTIRReshapeOpConversionPattern
     : public OpConversionPattern<mlir::stablehlo::ReshapeOp> {
   using OpConversionPattern<mlir::stablehlo::ReshapeOp>::OpConversionPattern;
@@ -1036,6 +1062,11 @@ void addSliceOpConversionPattern(MLIRContext *ctx, RewritePatternSet &patterns,
   patterns.add<StableHLOToTTIRSliceOpConversionPattern>(typeConverter, ctx);
 }
 
+void addBatchNormInferenceOpConversionPattern(MLIRContext *ctx, RewritePatternSet &patterns,
+                                              TypeConverter &typeConverter) {
+  patterns.add<StableHLOToBatchNormInferenceOpConversionPattern>(typeConverter, ctx);
+}
+
 } // namespace
 
 namespace mlir::tt {
@@ -1057,6 +1088,7 @@ void populateStableHLOToTTIRPatterns(MLIRContext *ctx,
   addReshapeOpConversionPattern(ctx, patterns, typeConverter);
   addLogicalOpConversionPattern(ctx, patterns, typeConverter);
   addSliceOpConversionPattern(ctx, patterns, typeConverter);
+  addBatchNormInferenceOpConversionPattern(ctx, patterns, typeConverter);
 }
 
 } // namespace mlir::tt

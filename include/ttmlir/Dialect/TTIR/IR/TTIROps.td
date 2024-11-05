@@ -449,6 +449,31 @@ def TTIR_RemainderOp : TTIR_ElementwiseBinaryOp<"remainder"> {
     }];
 }
 
+def TTIR_BatchNormInferenceOp : TTIR_Op<"batch_norm_inference"> {
+  let summary = "BatchNormInference operation";
+  let description = [{
+    Normalizes the `operand` tensor across all dimensions except for the
+    `feature_index` dimension and puts the result in the `output` tensor.
+
+    Example:
+    ```mlir
+    "ttir.batch_norm_inference"(%operand, %scale, %offset, %mean, %variance, epsilon = dense<f32>, feature_index = dense<i64>, %out) {
+    } : (tensor<2x2x2xf64>, tensor<2xf64>, tensor<2xf64>, tensor<2xf64>, tensor<2xf64>, dense<f32>, dense<i64>, tensor<2x2x2xf64>) -> tensor<2x2x2xf64>
+    ```
+  }];
+
+  let arguments = (ins AnyRankedTensor:$operand,
+                       AnyRankedTensor:$scale,
+                       AnyRankedTensor:$offset,
+                       AnyRankedTensor:$mean,
+                       AnyRankedTensor:$variance,
+                       F32Attr:$epsilon,
+                       I32Attr:$dimension,
+                       AnyRankedTensor:$out);
+  
+  let results = (outs AnyRankedTensor:$result);
+}
+
 class TTIR_ReductionOp<string mnemonic, list<Trait> traits = []> :
     TTIR_DPSOp<mnemonic, !listconcat(traits, [TTIR_GenericRegionOpInterface])> {
 
