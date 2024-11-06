@@ -420,9 +420,7 @@ public:
   matchAndRewrite(ttir::BatchNormInferenceOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto operand = adaptor.getOperand();
-    //mlir::RankedTensorType operand_type = mlir::cast<RankedTensorType>(adaptor.getOperand().getType());
     auto operandType = mlir::cast<RankedTensorType>(getTypeConverter()->convertType(adaptor.getOperand().getType()));
-    std::cerr << "JA SAM OVDE" << std::endl;
     auto scale =  adaptor.getScale();
     auto offset = adaptor.getOffset();
     auto mean = adaptor.getMean();
@@ -432,29 +430,28 @@ public:
     tensor::EmptyOp offset_broadcast = createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp mean_broadcast = createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp variance_broadcast = createEmptyOpOfType(op, operandType, rewriter);
-    std::cerr << "I AM HERE NOW" << std::endl;
 
     mlir::ArrayAttr dimension_array = rewriter.getArrayAttr(SmallVector<Attribute>(1,
-                                                  rewriter.getI32IntegerAttr(op.getDimension())));
+                                                  rewriter.getI64IntegerAttr(op.getDimension())));
 
     mlir::ArrayAttr broadcast_constraints = rewriter.getArrayAttr(SmallVector<Attribute>(2,
                                                   rewriter.getAttr<OperandConstraintAttr>(
                                                       OperandConstraint::AnyDeviceTile)));
     auto broadcast_scale = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
                             getTypeConverter()->convertType(op.getResult().getType()),
-                            scale, Value(scale_broadcast), dimension_array, broadcast_constraints);
+                            scale, scale_broadcast, dimension_array, broadcast_constraints);
     auto broadcast_offset = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
                             getTypeConverter()->convertType(op.getResult().getType()),
-                            offset, Value(offset_broadcast), dimension_array, broadcast_constraints);
+                            offset, offset_broadcast, dimension_array, broadcast_constraints);
     auto broadcast_mean = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
                           getTypeConverter()->convertType(op.getResult().getType()),
-                          mean, Value(mean_broadcast), dimension_array, broadcast_constraints);
+                          mean, mean_broadcast, dimension_array, broadcast_constraints);
     auto broadcast_variance = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
                               getTypeConverter()->convertType(op.getResult().getType()),
-                              variance, Value(variance_broadcast), dimension_array, broadcast_constraints);
-
+                              variance, variance_broadcast, dimension_array, broadcast_constraints);
     tensor::EmptyOp centered_operand = createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp stddev = createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp recip_stddev = createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp normalized_operand = createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp intermediate_tensor = createEmptyOpOfType(op, operandType, rewriter);
 
@@ -463,10 +460,12 @@ public:
                                                       OperandConstraint::AnyDeviceTile)));
     rewriter.create<mlir::tt::ttir::SubtractOp>(op.getLoc(), operand, broadcast_mean, centered_operand, binary_constraints);
     rewriter.create<mlir::tt::ttir::SqrtOp>(op.getLoc(), broadcast_variance, stddev, binary_constraints);
-    rewriter.create<mlir::tt::ttir::DivOp>(op.getLoc(), centered_operand, stddev, normalized_operand, binary_constraints);
+    // Instead of a div op, we need to have a reciprocal and mul op, since broadcast in div op is currently not supported in ttnn.
+    // This should be a temporary solution.
+    rewriter.create<mlir::tt::ttir::ReciprocalOp>(op.getLoc(), stddev, recip_stddev, binary_constraints);
+    rewriter.create<mlir::tt::ttir::MultiplyOp>(op.getLoc(), centered_operand, recip_stddev, normalized_operand, binary_constraints);
     rewriter.create<mlir::tt::ttir::MultiplyOp>(op.getLoc(), broadcast_scale, normalized_operand, intermediate_tensor,binary_constraints);
     rewriter.replaceOpWithNewOp<mlir::tt::ttir::AddOp>(op, intermediate_tensor, broadcast_offset, result, binary_constraints);
-    std::cerr << "JA SAM TAMO" << std::endl;
     return success();
   }
 };

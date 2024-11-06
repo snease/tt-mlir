@@ -10,6 +10,7 @@
 #include "ttmlir/Conversion/Passes.h"
 #include "ttmlir/Dialect/TTIR/Transforms/Passes.h"
 #include "ttmlir/Dialect/TTNN/Transforms/Passes.h"
+#include <iostream>
 
 namespace mlir::tt::ttnn {
 //===----------------------------------------------------------------------===//
@@ -22,7 +23,6 @@ void createTTNNPipelineTTIRPasses(
   systemDescOptions.path = options.systemDescPath;
 
   pm.addPass(mlir::tt::createTTIRToTTIRDecompositionPass());
-
   // Inlines all private functions. I.e flattens the program into the main
   // function. Removes all private functions.
   pm.addPass(mlir::createInlinerPass());
