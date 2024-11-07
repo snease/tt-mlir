@@ -203,7 +203,11 @@ public:
     rewriter.replaceOpWithNewOp<mlir::tt::ttir::BatchNormInferenceOp>(
         srcOp, outputType, srcOp->getOperand(0), srcOp->getOperand(1),
         srcOp->getOperand(2), srcOp->getOperand(3), srcOp->getOperand(4),
-        epsilonAttr, dimensionAttr, outputTensor);
+        epsilonAttr, dimensionAttr, outputTensor,
+        rewriter.getArrayAttr(
+            SmallVector<Attribute>(adaptor.getOperands().size() + 1,
+                                   rewriter.getAttr<OperandConstraintAttr>(
+                                       OperandConstraint::AnyDeviceTile))));
     return success();
   }
 };

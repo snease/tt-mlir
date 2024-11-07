@@ -449,7 +449,7 @@ def TTIR_RemainderOp : TTIR_ElementwiseBinaryOp<"remainder"> {
     }];
 }
 
-def TTIR_BatchNormInferenceOp : TTIR_Op<"batch_norm_inference"> {
+def TTIR_BatchNormInferenceOp : TTIR_DPSOp<"batch_norm_inference"> {
   let summary = "BatchNormInference operation";
   let description = [{
     Normalizes the `operand` tensor across all dimensions except for the
@@ -469,9 +469,15 @@ def TTIR_BatchNormInferenceOp : TTIR_Op<"batch_norm_inference"> {
                        AnyRankedTensor:$variance,
                        F32Attr:$epsilon,
                        I32Attr:$dimension,
-                       AnyRankedTensor:$out);
+                       AnyRankedTensor:$output,
+                       TT_OperandConstraintArrayAttr:$operand_constraints);
   
   let results = (outs AnyRankedTensor:$result);
+
+  let extraClassDeclaration = [{
+    MutableOperandRange getDpsInitsMutable() { return getOutputMutable(); }
+  }];
+
 }
 
 class TTIR_ReductionOp<string mnemonic, list<Trait> traits = []> :
