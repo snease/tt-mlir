@@ -919,6 +919,11 @@ void addElementwiseUnaryOpsConversionPatterns(MLIRContext *ctx,
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::NegOp, mlir::tt::ttir::NegOp>>(typeConverter, ctx);
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
+      mlir::stablehlo::RoundOp, mlir::tt::ttir::RoundOp>>(typeConverter, ctx);
+  patterns.add<StableHLOToTTIROpDefaultConversionPattern<
+      mlir::stablehlo::RoundNearestEvenOp, mlir::tt::ttir::RoundNearestEvenOp>>(
+      typeConverter, ctx);
+  patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::RsqrtOp, mlir::tt::ttir::RsqrtOp>>(typeConverter, ctx);
   patterns.add<StableHLOToTTIROpDefaultConversionPattern<
       mlir::stablehlo::SineOp, mlir::tt::ttir::SinOp>>(typeConverter, ctx);

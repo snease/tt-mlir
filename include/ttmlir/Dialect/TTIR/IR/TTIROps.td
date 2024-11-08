@@ -253,6 +253,25 @@ def TTIR_ReluOp : TTIR_ElementwiseUnaryOp<"relu"> {
     }];
 }
 
+def TTIR_RoundOp : TTIR_ElementwiseUnaryOp<"round"> {
+    let summary = "Eltwise round.";
+    let description = [{
+      Eltwise round operation.
+    }];
+}
+
+def TTIR_RoundNearestEvenOp : TTIR_ElementwiseUnaryOp<"roundnearesteven"> {
+    let summary = "Eltwise round towards nearest even.";
+    let description = [{
+      Rounds a number to the nearest value. If the number is exactly halfway between two values, the value is rounded to the nearest even value.
+
+      Example:
+      // %operand = [-2.5, 0.4, 0.5, 0.6, 2.5]
+      %result = "stablehlo.round_nearest_even"(%operand) : (tensor<5xf64>) -> tensor<5xf64>
+      // %result: [-2.0, 0.0, 0.0, 1.0, 2.0]
+    }];
+}
+
 def TTIR_RsqrtOp : TTIR_ElementwiseUnaryOp<"rsqrt"> {
     let summary = "Eltwise reciprocal square root.";
     let description = [{

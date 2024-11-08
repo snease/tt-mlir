@@ -237,6 +237,13 @@ def TTNN_ReluOp : TTNN_ElementwiseUnaryOp<"relu",
     }];
 }
 
+def TTNN_RoundOp : TTNN_ElementwiseUnaryOp<"round"> {
+    let summary = "Eltwise round.";
+    let description = [{
+      Eltwise round operation.
+    }];
+}
+
 def TTNN_SinOp : TTNN_ElementwiseUnaryOp<"sin"> {
     let summary = "Eltwise sine.";
     let description = [{
