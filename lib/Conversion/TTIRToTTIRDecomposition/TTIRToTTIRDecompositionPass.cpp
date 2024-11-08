@@ -53,7 +53,7 @@ struct TTIRToTTIRDecompositionPass
     TypeConverter typeConverter;
     // All types map 1:1.
     typeConverter.addConversion([](Type type) { return type; });
-    
+
     RewritePatternSet patterns(&getContext());
     populateTTIRToTTIRDecompositionPatterns(&getContext(), patterns,
                                             typeConverter);
