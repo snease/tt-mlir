@@ -24,8 +24,6 @@
 #include "llvm/Support/LogicalResult.h"
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Support/LLVM.h>
-#include <iostream>
-#include "mlir/IR/BuiltinOps.h"  // For func::FuncOp
 
 using namespace mlir;
 using namespace mlir::tt;
@@ -409,68 +407,98 @@ class BatchNormInferenceOpConversionPattern
 public:
   using OpConversionPattern<ttir::BatchNormInferenceOp>::OpConversionPattern;
 
-  tensor::EmptyOp createEmptyOpOfType(ttir::BatchNormInferenceOp &op, mlir::RankedTensorType &operandType, ConversionPatternRewriter &rewriter) const
-  { 
-    return rewriter.create<tensor::EmptyOp>(
-        op.getLoc(), operandType.getShape(), operandType.getElementType());
+  tensor::EmptyOp
+  createEmptyOpOfType(ttir::BatchNormInferenceOp &op,
+                      mlir::RankedTensorType &operandType,
+                      ConversionPatternRewriter &rewriter) const {
+    return rewriter.create<tensor::EmptyOp>(op.getLoc(), operandType.getShape(),
+                                            operandType.getElementType());
   }
 
   LogicalResult
   matchAndRewrite(ttir::BatchNormInferenceOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto operand = adaptor.getOperand();
-    auto operandType = mlir::cast<RankedTensorType>(getTypeConverter()->convertType(adaptor.getOperand().getType()));
-    auto scale =  adaptor.getScale();
+    auto operandType = mlir::cast<RankedTensorType>(
+        getTypeConverter()->convertType(adaptor.getOperand().getType()));
+    auto scale = adaptor.getScale();
     auto offset = adaptor.getOffset();
     auto mean = adaptor.getMean();
     auto variance = adaptor.getVariance();
     auto result = adaptor.getOutput();
-    tensor::EmptyOp scale_broadcast = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp offset_broadcast = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp mean_broadcast = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp variance_broadcast = createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp scale_broadcast =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp offset_broadcast =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp mean_broadcast =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp variance_broadcast =
+        createEmptyOpOfType(op, operandType, rewriter);
 
-    mlir::ArrayAttr dimension_array = rewriter.getArrayAttr(SmallVector<Attribute>(1,
-                                                  rewriter.getI64IntegerAttr(op.getDimension())));
+    mlir::ArrayAttr dimension_array =
+        rewriter.getArrayAttr(SmallVector<Attribute>(
+            1, rewriter.getI64IntegerAttr(op.getDimension())));
 
-    mlir::ArrayAttr broadcast_constraints = rewriter.getArrayAttr(SmallVector<Attribute>(2,
-                                                  rewriter.getAttr<OperandConstraintAttr>(
-                                                      OperandConstraint::AnyDeviceTile)));
-    auto broadcast_scale = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
-                            getTypeConverter()->convertType(op.getResult().getType()),
-                            scale, scale_broadcast, dimension_array, broadcast_constraints);
-    auto broadcast_offset = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
-                            getTypeConverter()->convertType(op.getResult().getType()),
-                            offset, offset_broadcast, dimension_array, broadcast_constraints);
-    auto broadcast_mean = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
-                          getTypeConverter()->convertType(op.getResult().getType()),
-                          mean, mean_broadcast, dimension_array, broadcast_constraints);
-    auto broadcast_variance = rewriter.create<mlir::tt::ttir::BroadcastOp>(op.getLoc(),
-                              getTypeConverter()->convertType(op.getResult().getType()),
-                              variance, variance_broadcast, dimension_array, broadcast_constraints);
-    tensor::EmptyOp centered_operand = createEmptyOpOfType(op, operandType, rewriter);
+    mlir::ArrayAttr broadcast_constraints = rewriter.getArrayAttr(
+        SmallVector<Attribute>(2, rewriter.getAttr<OperandConstraintAttr>(
+                                      OperandConstraint::AnyDeviceTile)));
+    auto broadcast_scale = rewriter.create<mlir::tt::ttir::BroadcastOp>(
+        op.getLoc(), getTypeConverter()->convertType(op.getResult().getType()),
+        scale, scale_broadcast, dimension_array, broadcast_constraints);
+    auto broadcast_offset = rewriter.create<mlir::tt::ttir::BroadcastOp>(
+        op.getLoc(), getTypeConverter()->convertType(op.getResult().getType()),
+        offset, offset_broadcast, dimension_array, broadcast_constraints);
+    auto broadcast_mean = rewriter.create<mlir::tt::ttir::BroadcastOp>(
+        op.getLoc(), getTypeConverter()->convertType(op.getResult().getType()),
+        mean, mean_broadcast, dimension_array, broadcast_constraints);
+    auto broadcast_variance = rewriter.create<mlir::tt::ttir::BroadcastOp>(
+        op.getLoc(), getTypeConverter()->convertType(op.getResult().getType()),
+        variance, variance_broadcast, dimension_array, broadcast_constraints);
+    tensor::EmptyOp centered_operand =
+        createEmptyOpOfType(op, operandType, rewriter);
     tensor::EmptyOp stddev = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp recip_stddev = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp normalized_operand = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp intermediate_tensor = createEmptyOpOfType(op, operandType, rewriter);
-    tensor::EmptyOp variance_plus_epsilon = createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp recip_stddev =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp normalized_operand =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp intermediate_tensor =
+        createEmptyOpOfType(op, operandType, rewriter);
+    tensor::EmptyOp variance_plus_epsilon =
+        createEmptyOpOfType(op, operandType, rewriter);
 
-    mlir::ArrayAttr binary_constraints = rewriter.getArrayAttr(SmallVector<Attribute>(3,
-                                                  rewriter.getAttr<OperandConstraintAttr>(
-                                                      OperandConstraint::AnyDeviceTile)));
+    mlir::ArrayAttr binary_constraints = rewriter.getArrayAttr(
+        SmallVector<Attribute>(3, rewriter.getAttr<OperandConstraintAttr>(
+                                      OperandConstraint::AnyDeviceTile)));
 
-    ttir::ConstantOp epsilonConstantTensor = rewriter.create<mlir::tt::ttir::ConstantOp>(op.getLoc(), operandType, mlir::DenseElementsAttr::get(operandType, rewriter.getFloatAttr(rewriter.getF32Type(), adaptor.getEpsilon())));
+    ttir::ConstantOp epsilonConstantTensor =
+        rewriter.create<mlir::tt::ttir::ConstantOp>(
+            op.getLoc(), operandType,
+            mlir::DenseElementsAttr::get(
+                operandType, rewriter.getFloatAttr(rewriter.getF32Type(),
+                                                   adaptor.getEpsilon())));
 
-    rewriter.create<mlir::tt::ttir::SubtractOp>(op.getLoc(), operand, broadcast_mean, centered_operand, binary_constraints);
-    rewriter.create<mlir::tt::ttir::AddOp>(op.getLoc(), broadcast_variance, epsilonConstantTensor, variance_plus_epsilon, binary_constraints);
-    rewriter.create<mlir::tt::ttir::SqrtOp>(op.getLoc(), variance_plus_epsilon, stddev, binary_constraints);
-    
-    // Instead of a div op, we need to have a reciprocal and mul op, since broadcast in div op is currently not supported in ttnn.
-    // This should be a temporary solution.
-    rewriter.create<mlir::tt::ttir::ReciprocalOp>(op.getLoc(), stddev, recip_stddev, binary_constraints);
-    rewriter.create<mlir::tt::ttir::MultiplyOp>(op.getLoc(), centered_operand, recip_stddev, normalized_operand, binary_constraints);
-    rewriter.create<mlir::tt::ttir::MultiplyOp>(op.getLoc(), broadcast_scale, normalized_operand, intermediate_tensor,binary_constraints);
-    rewriter.replaceOpWithNewOp<mlir::tt::ttir::AddOp>(op, intermediate_tensor, broadcast_offset, result, binary_constraints);
+    rewriter.create<mlir::tt::ttir::SubtractOp>(
+        op.getLoc(), operand, broadcast_mean, centered_operand,
+        binary_constraints);
+    rewriter.create<mlir::tt::ttir::AddOp>(
+        op.getLoc(), broadcast_variance, epsilonConstantTensor,
+        variance_plus_epsilon, binary_constraints);
+    rewriter.create<mlir::tt::ttir::SqrtOp>(op.getLoc(), variance_plus_epsilon,
+                                            stddev, binary_constraints);
+
+    // Instead of a div op, we need to have a reciprocal and mul op, since
+    // broadcast in div op is currently not supported in ttnn. This should be a
+    // temporary solution.
+    rewriter.create<mlir::tt::ttir::ReciprocalOp>(
+        op.getLoc(), stddev, recip_stddev, binary_constraints);
+    rewriter.create<mlir::tt::ttir::MultiplyOp>(
+        op.getLoc(), centered_operand, recip_stddev, normalized_operand,
+        binary_constraints);
+    rewriter.create<mlir::tt::ttir::MultiplyOp>(
+        op.getLoc(), broadcast_scale, normalized_operand, intermediate_tensor,
+        binary_constraints);
+    rewriter.replaceOpWithNewOp<mlir::tt::ttir::AddOp>(
+        op, intermediate_tensor, broadcast_offset, result, binary_constraints);
     return success();
   }
 };

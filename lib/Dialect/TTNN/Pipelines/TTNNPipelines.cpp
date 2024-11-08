@@ -10,7 +10,6 @@
 #include "ttmlir/Conversion/Passes.h"
 #include "ttmlir/Dialect/TTIR/Transforms/Passes.h"
 #include "ttmlir/Dialect/TTNN/Transforms/Passes.h"
-#include <iostream>
 
 namespace mlir::tt::ttnn {
 //===----------------------------------------------------------------------===//

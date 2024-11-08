@@ -471,7 +471,7 @@ def TTIR_BatchNormInferenceOp : TTIR_DPSOp<"batch_norm_inference"> {
                        I32Attr:$dimension,
                        AnyRankedTensor:$output,
                        TT_OperandConstraintArrayAttr:$operand_constraints);
-  
+
   let results = (outs AnyRankedTensor:$result);
 
   let extraClassDeclaration = [{

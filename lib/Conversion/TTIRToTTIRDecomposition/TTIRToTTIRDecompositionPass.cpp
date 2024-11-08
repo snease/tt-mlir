@@ -17,7 +17,6 @@
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/Tensor/IR/Tensor.h>
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-#include <iostream>
 
 using namespace mlir;
 using namespace mlir::tt;

@@ -16,7 +16,6 @@
 #include <mlir/Pass/Pass.h>
 
 #include <stablehlo/dialect/StablehloOps.h>
-#include <iostream>
 
 #include "ttmlir/Dialect/TT/IR/TT.h"
 #include "ttmlir/Dialect/TTIR/IR/TTIR.h"
@@ -99,7 +98,7 @@ struct ConvertStableHLOToTTIRPass
     populateCallOpTypeConversionPattern(patterns, typeConverter);
     target.addDynamicallyLegalOp<func::CallOp>(
         [&](func::CallOp op) { return typeConverter.isLegal(op); });
-    
+
     populateStableHLOToTTIRPatterns(&getContext(), patterns, typeConverter);
 
     // Apply conversion.
