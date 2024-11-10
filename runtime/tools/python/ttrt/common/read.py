@@ -29,6 +29,7 @@ class Read:
         "cpp",
         "inputs",
         "outputs",
+        "program",
     ]
 
     @staticmethod
@@ -352,6 +353,16 @@ class Read:
                 self.logging.info(f"\n{program['debug_info']['mlir']['source']}")
         except Exception as e:
             raise Exception(f"failed to read mlir for binary={binary.file_path}")
+
+    def program(self, binary):
+        try:
+            import ttrt.binary
+
+            bin_dict = ttrt.binary.as_dict(binary.fbb)
+            for i, program in enumerate(bin_dict["programs"]):
+                self.logging.info(f"program[{i}]:{json.dumps(program, indent=2)}")
+        except Exception as e:
+            raise Exception(f"failed to read program for binary={binary.file_path}")
 
     def cpp(self, binary):
         try:

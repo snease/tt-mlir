@@ -13,7 +13,7 @@ void ShardChainConfig::build() {
 }
 
 ShardSolver ShardChainConfig::resolve(
-    const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+    const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
         &legalLayouts,
     unsigned usableL1CacheSize) {
   assert(state == ShardChainState::Built);
@@ -29,7 +29,7 @@ ShardSolver ShardChainConfig::resolve(
 }
 
 void ShardChainConfig::complete(
-    const llvm::DenseMap<Operation *, tt::LayoutAttr> &selectedOpLayout,
+    const llvm::DenseMap<Operation *, TensorConfigAttr> &selectedOpLayout,
     std::unordered_set<Edge> &reshardedEdges) {
   assert(state == ShardChainState::Resolved);
   for (auto &shardSpec : shardSpecs) {

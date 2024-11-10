@@ -110,6 +110,7 @@ inline DataType elementTypeToDataType(Type elementType) {
   }
   return dtype;
 }
+
 } // namespace mlir::tt
 
 #define GET_ATTRDEF_CLASSES
@@ -119,8 +120,38 @@ inline DataType elementTypeToDataType(Type elementType) {
 #include "ttmlir/Dialect/TT/IR/TTOpsTypes.h.inc"
 
 namespace mlir::tt {
+
 SystemDescAttr getCurrentScopeSystemDesc(Operation *op);
+
 DeviceAttr getCurrentScopeDevice(Operation *op);
+
+
 } // namespace mlir::tt
+
+mlir::AffineMap
+collapsedLinearAffineMap(
+    ::mlir::MLIRContext *context, ::llvm::ArrayRef<int64_t> shape,
+    ::llvm::ArrayRef<int64_t> gridShape,
+    ::llvm::ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals);
+
+mlir::SmallVector<std::int64_t>
+calculateLogicalShardShape(mlir::ArrayRef<int64_t> tensorShape,
+                           mlir::AffineMap linear, mlir::tt::GridAttr grid);
+
+template<typename T, typename TAttr>
+mlir::MemRefType buildMemRef(::mlir::MLIRContext *context,
+                                    ::llvm::ArrayRef<int64_t> shardShape,
+                                    ::mlir::Type elementType,
+                                    T memorySpace) {
+  ::llvm::SmallVector<int64_t> scalarShardShape(shardShape);
+  if (mlir::isa<mlir::tt::TileType>(elementType)) {
+    scalarShardShape =
+        mlir::cast<mlir::tt::TileType>(elementType).getTiledShape(scalarShardShape);
+  }
+  return mlir::MemRefType::get(
+      scalarShardShape, elementType,
+      mlir::AffineMap::getMultiDimIdentityMap(scalarShardShape.size(), context),
+      TAttr::get(context, memorySpace));
+}
 
 #endif

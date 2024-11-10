@@ -37,7 +37,7 @@ public:
     SystemDescAttr systemDesc = mlir::cast<tt::SystemDescAttr>(
         moduleOp->getAttr(tt::SystemDescAttr::name));
     ChipDescAttr chipDesc = systemDesc.getChipDescs()[0];
-    llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> legalLayouts;
+    llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> legalLayouts;
 
     moduleOp->walk([&](Operation *op) {
       if (op->getNumResults() == 0) {
@@ -126,18 +126,16 @@ public:
 
           // Update the memory space and layout of the op.
           //
-          tt::LayoutAttr ttLayoutAttr =
-              mlir::cast<tt::LayoutAttr>(newTensorType.getEncoding());
+          TensorConfigAttr ttLayoutAttr =
+              mlir::cast<TensorConfigAttr>(newTensorType.getEncoding());
 
           op->getResult(0).setType(newTensorType);
 
           // Update DPS operand layout as well.
           //
           if (isa<mlir::DestinationStyleOpInterface>(op)) {
-            BufferType bufferType =
-                utils::toTTNNBufferType(ttLayoutAttr.getMemorySpace());
-            TensorMemoryLayout tensorMemoryLayout =
-                utils::toTTNNTensorMemoryLayout(ttLayoutAttr.getMemLayout());
+            BufferType bufferType = ttLayoutAttr.getBufferType();
+            TensorMemoryLayout tensorMemoryLayout = ttLayoutAttr.getMemLayout().getValue();
 
             op->getOperands().back().setType(newTensorType);
             EmptyOp emptyOp =
@@ -154,10 +152,8 @@ public:
           // layout attr refactor and lowering.
           //
           else if (isa<ttnn::ToDeviceOp>(op)) {
-            BufferType bufferType =
-                utils::toTTNNBufferType(ttLayoutAttr.getMemorySpace());
-            TensorMemoryLayout tensorMemoryLayout =
-                utils::toTTNNTensorMemoryLayout(ttLayoutAttr.getMemLayout());
+            BufferType bufferType = ttLayoutAttr.getBufferType();
+            TensorMemoryLayout tensorMemoryLayout = ttLayoutAttr.getMemLayout().getValue();
             // Update the device op with the new tensor type.
             //
             ttnn::ToDeviceOp toDeviceOp = llvm::cast<ttnn::ToDeviceOp>(op);
@@ -197,7 +193,7 @@ public:
       //
       if (isa<ttnn::ToLayoutOp>(producerOp)) {
         ttnn::ToLayoutOp toLayoutOp = llvm::cast<ttnn::ToLayoutOp>(producerOp);
-        tt::LayoutAttr consumerOpOutputLayout = mlir::cast<tt::LayoutAttr>(
+        TensorConfigAttr consumerOpOutputLayout = mlir::cast<TensorConfigAttr>(
             mlir::cast<RankedTensorType>(consumerOp->getResult(0).getType())
                 .getEncoding());
 
@@ -205,24 +201,24 @@ public:
             mlir::cast<RankedTensorType>(toLayoutOp.getResult().getType());
         llvm::ArrayRef<int64_t> toLayoutOpTensorShape =
             toLayoutOpTensorType.getShape();
-        tt::LayoutAttr toLayoutOpLayout =
-            mlir::cast<tt::LayoutAttr>(toLayoutOpTensorType.getEncoding());
+        TensorConfigAttr toLayoutOpLayout =
+            mlir::cast<TensorConfigAttr>(toLayoutOpTensorType.getEncoding());
 
         // TODO(nobradovic): Match memory space and layout of consumer op. This
         // actually needs to be properly resolved based on op type, output
         // layout and other inputs.
         //
+
+        std::array<std::pair<int64_t, int64_t>, 1> collapseDims = {{{0, -1}}};
+        TensorConfigAttr newLayout = TensorConfigAttr::get(toLayoutOp.getContext(),
+                                                           toLayoutOpTensorShape,
+                                                           toLayoutOpLayout.getElementType(),
+                                                           toLayoutOpLayout.getBufferType(),
+                                                           consumerOpOutputLayout.getGrid(),
+                                                           collapseDims,
+                                                           toLayoutOpLayout.getMemLayout());
         RankedTensorType newTensorType = RankedTensorType::get(
-            toLayoutOpTensorShape, toLayoutOpTensorType.getElementType(),
-            toLayoutOpLayout
-                .withElementType(toLayoutOp->getContext(),
-                                 consumerOpOutputLayout.getElementType())
-                .withMemorySpace(toLayoutOp.getContext(),
-                                 consumerOpOutputLayout.getMemorySpace())
-                .withMemoryLayout(toLayoutOp.getContext(),
-                                  consumerOpOutputLayout.getMemLayout())
-                .withGrid(toLayoutOp.getContext(), toLayoutOpTensorType,
-                          consumerOpOutputLayout.getGrid()));
+            toLayoutOpTensorShape, toLayoutOpTensorType.getElementType(), newLayout);
 
         toLayoutOp.getResult().setType(newTensorType);
         toLayoutOp.getOperands().back().setType(newTensorType);

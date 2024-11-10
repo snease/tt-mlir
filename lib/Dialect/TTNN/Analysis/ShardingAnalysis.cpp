@@ -4,6 +4,7 @@
 
 #include "ttmlir/Dialect/TTNN/Analysis/ShardingAnalysis.h"
 #include "ttmlir/Dialect/TTNN/Analysis/DFShardingPolicy.h"
+#include "ttmlir/Dialect/TTNN/IR/TTNNOpsAttrs.h"
 
 namespace mlir::tt::ttnn {
 
@@ -15,12 +16,12 @@ bool ShardingAnalysis::applyOverrides() {
   return false;
 }
 
-llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
-filterShardedOnly(const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
+filterShardedOnly(const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
                       &legalLayouts) {
-  llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> shardedLayouts;
+  llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> shardedLayouts;
   for (const auto &opLayouts : legalLayouts) {
-    std::vector<tt::LayoutAttr> opShardedLayouts;
+    std::vector<TensorConfigAttr> opShardedLayouts;
     for (const auto &layout : opLayouts.second) {
       if (layout.hasShardedL1TensorMemoryLayout()) {
         opShardedLayouts.push_back(layout);
@@ -55,7 +56,7 @@ void ShardingAnalysis::analysisImplementation() {
     assert(shardChainConfig.getState() == ShardChainState::Completed);
     for (const auto &shardSpec : shardChainConfig.getShardSpecs()) {
       analysisResult.legalLayouts[shardSpec.op] =
-          std::vector<tt::LayoutAttr>{shardSpec.layout};
+          std::vector<TensorConfigAttr>{shardSpec.layout};
     }
 
     analysisResult.reshardedEdges.insert(

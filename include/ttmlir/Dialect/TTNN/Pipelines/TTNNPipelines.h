@@ -6,7 +6,7 @@
 #define TTMLIR_DIALECT_TTNN_PIPELINES_TTNNPIPELINES_H
 
 #include "mlir/Pass/PassOptions.h"
-#include "ttmlir/Dialect/TT/Utils/OverrideParams.h"
+#include "ttmlir/Dialect/TTNN/Utils/OverrideParams.h"
 
 namespace mlir::tt::ttnn {
 struct LayoutOverrideParser
@@ -64,16 +64,16 @@ public:
       }
 
       // Parse memory space.
-      std::optional<mlir::tt::MemorySpace> memorySpace =
-          mlir::tt::symbolizeMemorySpace(layoutParamParts[iMemorySpace]);
+      std::optional<BufferType> memorySpace =
+          symbolizeBufferType(layoutParamParts[iMemorySpace]);
       if (!memorySpace.has_value()) {
         opt.error("Invalid memory space: " + layoutParamParts[iMemorySpace]);
         return true;
       }
 
       // Parse tensor memory layout.
-      std::optional<mlir::tt::TensorMemoryLayout> memoryLayout =
-          mlir::tt::symbolizeTensorMemoryLayout(
+      std::optional<TensorMemoryLayout> memoryLayout =
+          symbolizeTensorMemoryLayout(
               layoutParamParts[iMemoryLayout]);
       if (!memoryLayout.has_value()) {
         opt.error("Invalid tensor memory layout: " +
@@ -103,8 +103,8 @@ public:
         }
       }
       // Print memory space and memory layout
-      os << ":" << mlir::tt::stringifyMemorySpace(params.memorySpace);
-      os << ":" << mlir::tt::stringifyTensorMemoryLayout(params.memoryLayout);
+      os << ":" << stringifyBufferType(params.bufferType);
+      os << ":" << stringifyTensorMemoryLayout(params.memoryLayout);
       if (++count < value.size()) {
         os << ",";
       }

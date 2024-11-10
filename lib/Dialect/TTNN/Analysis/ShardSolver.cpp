@@ -11,7 +11,7 @@ namespace mlir::tt::ttnn {
 ShardSolver::Bitset ShardSolver::kBitsetAll = ~kBitsetNone;
 
 ShardSolver::ShardSolver(
-    const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+    const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
         &legalLayouts,
     const std::vector<ShardSpec> &shardSpecs,
     const llvm::DenseSet<Operation *> &shardedOps,
@@ -68,7 +68,7 @@ bool ShardSolver::resolveStep() {
   for (const auto shardSpec : *shardSpecs) {
     Operation *consumerOp = shardSpec.op;
     Bitset *consumerBitset = getOrInsertBitset(consumerOp, kBitsetAll);
-    std::vector<tt::LayoutAttr> const &consumerLayouts =
+    std::vector<TensorConfigAttr> const &consumerLayouts =
         getLegalLayouts(consumerOp);
 
     for (Edge edge : operandOpEdges[consumerOp]) {
@@ -77,7 +77,7 @@ bool ShardSolver::resolveStep() {
 
       Operation *producerOp = edge.producerOp;
       Bitset *producerBitset = getOrInsertBitset(producerOp, kBitsetAll);
-      std::vector<tt::LayoutAttr> const &producerLayouts =
+      std::vector<TensorConfigAttr> const &producerLayouts =
           getLegalLayouts(producerOp);
 
       assert(not(consumerLayouts.empty() && producerLayouts.empty()));
@@ -190,13 +190,13 @@ void ShardSolver::preprocessFirstOp() {
   }
 
   Bitset *firstOpBitset = getOrInsertBitset(firstOp, kBitsetAll);
-  std::vector<tt::LayoutAttr> const &firstOpLayouts = getLegalLayouts(firstOp);
+  std::vector<TensorConfigAttr> const &firstOpLayouts = getLegalLayouts(firstOp);
   Operation *operandOp = firstOp->getOperand(0).getDefiningOp();
 
   RankedTensorType firstOpInputTensorType =
       mlir::cast<RankedTensorType>(operandOp->getResult(0).getType());
-  tt::LayoutAttr firstOpInputLayout =
-      mlir::cast<tt::LayoutAttr>(firstOpInputTensorType.getEncoding());
+  TensorConfigAttr firstOpInputLayout =
+      mlir::cast<TensorConfigAttr>(firstOpInputTensorType.getEncoding());
   constexpr float tensorL1UsageCap = 0.8;
 
   for (size_t i = 0; i < firstOpLayouts.size(); ++i) {
@@ -204,25 +204,20 @@ void ShardSolver::preprocessFirstOp() {
       continue;
     }
 
-    tt::LayoutAttr firstOpLayout = firstOpLayouts[i];
+    TensorConfigAttr firstOpLayout = firstOpLayouts[i];
     assert(firstOpLayout.hasShardedL1TensorMemoryLayout());
 
-    tt::LayoutAttr firstOpInputShardedLayout =
-        firstOpInputLayout
-            .withMemorySpace(firstOp->getContext(),
-                             firstOpLayout.getMemorySpace())
-            .withMemoryLayout(firstOp->getContext(),
-                              firstOpLayout.getMemLayout())
-            .withGrid(firstOp->getContext(), firstOpInputTensorType,
-                      firstOpLayout.getGrid());
+    std::array<std::pair<int64_t, int64_t>, 1> collapseDims = {{{0, -1}}};
+    TensorConfigAttr firstOpInputShardedLayout = TensorConfigAttr::get(firstOp->getContext(),
+            firstOpInputTensorType.getShape(),
+            firstOpInputLayout.getElementType(),
+            firstOpInputLayout.getBufferType(),
+            firstOpLayout.getGrid(),
+            ArrayRef<std::pair<int64_t, int64_t>>(collapseDims),
+            firstOpLayout.getMemLayout());
 
-    uint64_t firstInputL1Usage = deviceAttr.getLayoutSizeBytes(
-        firstOpInputTensorType.getShape(), firstOpInputShardedLayout,
-        firstOpInputShardedLayout.getMemorySpace());
-    uint64_t firstOpL1OutputUsage = deviceAttr.getLayoutSizeBytes(
-        mlir::cast<RankedTensorType>(firstOp->getResult(0).getType())
-            .getShape(),
-        firstOpLayout, firstOpLayout.getMemorySpace());
+    uint64_t firstInputL1Usage = firstOpInputShardedLayout.getTensorSizeInBytes(firstOpInputTensorType.getShape(), deviceAttr);
+    uint64_t firstOpL1OutputUsage = firstOpLayout.getTensorSizeInBytes(mlir::cast<RankedTensorType>(firstOp->getResult(0).getType()).getShape(), deviceAttr);
 
     if ((firstInputL1Usage + firstOpL1OutputUsage) >=
         tensorL1UsageCap * usableL1CacheSize) {
@@ -442,9 +437,9 @@ ShardSolver::Bitset *ShardSolver::getOrInsertBitset(Operation *op,
 
 // Returns vector of legal LayoutAttrs for passed in op.
 //
-const std::vector<tt::LayoutAttr> &
+const std::vector<TensorConfigAttr> &
 ShardSolver::getLegalLayouts(Operation *op) const {
-  static std::vector<tt::LayoutAttr> nullLayouts;
+  static std::vector<TensorConfigAttr> nullLayouts;
 
   const auto legalIt = legalLayouts->find(op);
 
@@ -461,7 +456,7 @@ ShardSolver::RemainingLayoutAttrs ShardSolver::at(Operation *op) const {
   return layouts;
 }
 
-void ShardSolver::set(Operation *op, tt::LayoutAttr const &layout) {
+void ShardSolver::set(Operation *op, TensorConfigAttr const &layout) {
   assert(selectedOpLayout.count(op) == 0);
 
   selectedOpLayout[op] = layout;
@@ -488,8 +483,8 @@ void ShardSolver::set(Operation *op, tt::LayoutAttr const &layout) {
 }
 
 bool ShardSolver::checkShardCompatible(
-    Operation *producerOp, tt::LayoutAttr const &producerLayout,
-    Operation *consumerOp, tt::LayoutAttr const &consumerLayout) const {
+    Operation *producerOp, TensorConfigAttr const &producerLayout,
+    Operation *consumerOp, TensorConfigAttr const &consumerLayout) const {
 
   // TEMP : Dummy mock implementation, will be replaced.
   //
@@ -510,15 +505,11 @@ bool ShardSolver::checkShardCompatible(
          consumerLayout.hasShardedL1TensorMemoryLayout());
   RankedTensorType producerTensorType =
       mlir::cast<RankedTensorType>(producerOp->getResult(0).getType());
-  uint64_t producerL1OutputUsage = deviceAttr.getLayoutSizeBytes(
-      producerTensorType.getShape(), producerLayout,
-      producerLayout.getMemorySpace());
+  uint64_t producerL1OutputUsage = producerLayout.getTensorSizeInBytes(producerTensorType.getShape(), deviceAttr);
 
   RankedTensorType consumerTensorType =
       mlir::cast<RankedTensorType>(consumerOp->getResult(0).getType());
-  uint64_t consumerL1OutputUsage = deviceAttr.getLayoutSizeBytes(
-      consumerTensorType.getShape(), consumerLayout,
-      consumerLayout.getMemorySpace());
+  uint64_t consumerL1OutputUsage = consumerLayout.getTensorSizeInBytes(consumerTensorType.getShape(), deviceAttr);
   // Figure out this const based on exec data, but will be replaced
   // with API.
   //

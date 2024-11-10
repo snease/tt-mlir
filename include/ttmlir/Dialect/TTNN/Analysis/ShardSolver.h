@@ -7,6 +7,7 @@
 
 #include "ttmlir/Dialect/TT/IR/TTOpsTypes.h"
 #include "ttmlir/Dialect/TTNN/Analysis/Edge.h"
+#include "ttmlir/Dialect/TTNN/IR/TTNNOpsAttrs.h"
 #include <algorithm>
 #include <bitset>
 #include <memory>
@@ -19,11 +20,11 @@ namespace mlir::tt::ttnn {
 struct ShardSpec;
 
 struct ShardSolverSolution {
-  llvm::DenseMap<Operation *, tt::LayoutAttr> selectedOpLayout;
+  llvm::DenseMap<Operation *, TensorConfigAttr> selectedOpLayout;
   std::unordered_set<Edge> reshardedEdges;
 
   ShardSolverSolution(
-      const llvm::DenseMap<Operation *, tt::LayoutAttr> &selectedOpLayout,
+      const llvm::DenseMap<Operation *, TensorConfigAttr> &selectedOpLayout,
       const std::unordered_set<Edge> &reshardedEdges)
       : selectedOpLayout(selectedOpLayout), reshardedEdges(reshardedEdges) {}
 };
@@ -39,7 +40,7 @@ public:
   struct RemainingLayoutAttrs {
     class Iterator {
       std::uint64_t i = 0;
-      std::vector<tt::LayoutAttr> const *p = nullptr;
+      std::vector<TensorConfigAttr> const *p = nullptr;
       Bitset mask = 0;
 
     private:
@@ -61,9 +62,9 @@ public:
       using value_type = const tt::LayoutAttr;
       using difference_type = const tt::LayoutAttr;
       using pointer = const tt::LayoutAttr *;
-      using reference = const tt::LayoutAttr &;
+      using reference = const TensorConfigAttr &;
 
-      Iterator(std::vector<tt::LayoutAttr> const *p, const Bitset &mask,
+      Iterator(std::vector<TensorConfigAttr> const *p, const Bitset &mask,
                std::uint64_t i = 0)
           : i(i), p(p), mask(mask) {
         nextValid();
@@ -87,7 +88,7 @@ public:
       reference operator*() const { return (*p)[i]; }
     };
 
-    RemainingLayoutAttrs(std::vector<tt::LayoutAttr> const &p,
+    RemainingLayoutAttrs(std::vector<TensorConfigAttr> const &p,
                          const Bitset &mask)
         : p(&p), mask(mask) {}
 
@@ -97,7 +98,7 @@ public:
     }
     size_t size() const { return mask.count(); }
 
-    std::vector<tt::LayoutAttr> const *p = nullptr;
+    std::vector<TensorConfigAttr> const *p = nullptr;
     Bitset mask = 0;
   };
 
@@ -247,7 +248,7 @@ private:
     Paths paths;
   };
 
-  const std::vector<tt::LayoutAttr> &
+  const std::vector<TensorConfigAttr> &
   getLegalLayouts(Operation *operation) const;
   void reset();
 
@@ -271,21 +272,21 @@ private:
 
   void preprocessFirstOp();
   bool checkShardCompatible(Operation *producerOp,
-                            tt::LayoutAttr const &producerLayout,
+                            TensorConfigAttr const &producerLayout,
                             Operation *consumerOp,
-                            tt::LayoutAttr const &consumerLayout) const;
+                            TensorConfigAttr const &consumerLayout) const;
 
 public:
-  ShardSolver(const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+  ShardSolver(const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
                   &legalLayouts,
               const std::vector<ShardSpec> &shardSpecs,
               const llvm::DenseSet<Operation *> &shardedOps,
               const unsigned usableL1CacheSize);
   RemainingLayoutAttrs at(Operation *operation) const;
-  void set(Operation *operation, tt::LayoutAttr const &layout);
+  void set(Operation *operation, TensorConfigAttr const &layout);
 
 private:
-  const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> *legalLayouts;
+  const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> *legalLayouts;
   const std::vector<ShardSpec> *shardSpecs;
   const llvm::DenseSet<Operation *> *shardedOps;
   unsigned usableL1CacheSize;
@@ -298,7 +299,7 @@ private:
   std::unordered_map<Edge, PathSetId> pathSetIds;
   std::unordered_map<Operation *, BitsetId> bitsetIds;
 
-  llvm::DenseMap<Operation *, tt::LayoutAttr> selectedOpLayout;
+  llvm::DenseMap<Operation *, TensorConfigAttr> selectedOpLayout;
   std::unordered_set<Edge> reshardedEdges;
 };
 

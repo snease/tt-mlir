@@ -58,14 +58,14 @@ public:
   matchAndRewrite(tensor::EmptyOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    // Get tt::LayoutAttr of the result type
+    // Get TensorConfigAttr the result type
     //
-    tt::LayoutAttr ttLayoutAttr =
-        mlir::cast<tt::LayoutAttr>(op.getResult().getType().getEncoding());
+    ttnn::TensorConfigAttr tensorConfig = mlir::cast<ttnn::TensorConfigAttr>(
+        op.getResult().getType().getEncoding());
 
     // Get the shape of the tensor, tensor layout, and data type
     //
-    mlir::MemRefType memref = ttLayoutAttr.getMemref();
+    mlir::MemRefType memref = tensorConfig.getMemref();
     ttnn::ShapeAttr shapeAttr = ttnn::ShapeAttr::get(
         rewriter.getContext(),
         mlir::cast<RankedTensorType>(op->getResult(0).getType()).getShape());
@@ -87,8 +87,9 @@ public:
     // If the tensor is not going to device, we can create the op without
     // device-specific attributes
     //
-    tt::TensorMemoryLayout ttTensorMemoryLayout = ttLayoutAttr.getMemLayout();
-    if (ttTensorMemoryLayout == TensorMemoryLayout::None) {
+    ttnn::TensorMemoryLayoutAttr ttTensorMemoryLayoutAttr =
+        tensorConfig.getMemLayout();
+    if (!ttTensorMemoryLayoutAttr) {
       rewriter.replaceOpWithNewOp<ttnn::EmptyOp>(
           op, this->getTypeConverter()->convertType(op.getType()), nullptr,
           shapeAttr, dTypeAttr, tensorLayoutAttr, nullptr);
@@ -96,10 +97,9 @@ public:
       return success();
     }
 
-    ttnn::BufferType bufferType =
-        ttnn::utils::toTTNNBufferType(ttLayoutAttr.getMemorySpace());
+    ttnn::BufferType bufferType = tensorConfig.getBufferType();
     ttnn::TensorMemoryLayout tensorMemoryLayout =
-        ttnn::utils::toTTNNTensorMemoryLayout(ttLayoutAttr.getMemLayout());
+        ttTensorMemoryLayoutAttr.getValue();
 
     // Create MemoryConfigAttr
     //
@@ -152,15 +152,15 @@ public:
     //
     auto device = getOrInsertDevice(rewriter, op);
 
-    // Get tt::LayoutAttr of the result type
+    // Get ttnn::TensorConfigAttr of the result type
     //
-    tt::LayoutAttr ttLayoutAttr =
-        mlir::cast<tt::LayoutAttr>(op.getResult().getType().getEncoding());
+    ttnn::TensorConfigAttr tensorConfig = mlir::cast<ttnn::TensorConfigAttr>(
+        op.getResult().getType().getEncoding());
 
     // Figure out if output tensor is in RowMajor layout or Tile layout
     // Figure out the data type of the output tensor
     //
-    mlir::MemRefType memref = ttLayoutAttr.getMemref();
+    mlir::MemRefType memref = tensorConfig.getMemref();
     Type elementType = memref.getElementType();
     DataType dtype = DataType::Float32;
     // TODO(bug #665):
@@ -188,8 +188,7 @@ public:
 
     // Map TT::MemorySpace to TTNN::BufferType
     //
-    ttnn::BufferType bufferType =
-        ttnn::utils::toTTNNBufferType(ttLayoutAttr.getMemorySpace());
+    ttnn::BufferType bufferType = tensorConfig.getBufferType();
 
     // If the ToLayoutOp is applied to empty tensor, we need to check whether
     // the empty tensor is going back to system memory; if so, we should not
@@ -205,7 +204,7 @@ public:
     // Set the tensor memory layout
     //
     ttnn::TensorMemoryLayout tensorMemoryLayout =
-        ttnn::utils::toTTNNTensorMemoryLayout(ttLayoutAttr.getMemLayout());
+        tensorConfig.getMemLayout().getValue();
 
     // TODO(bug #621):
     // Add ttnn::Tensor(tensor, dtype) op call once tt-metal is updated

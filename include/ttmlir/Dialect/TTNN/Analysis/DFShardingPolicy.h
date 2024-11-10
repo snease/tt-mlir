@@ -7,6 +7,7 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "ttmlir/Dialect/TTNN/Analysis/ShardChainConfig.h"
+#include "ttmlir/Dialect/TTNN/IR/TTNNOpsAttrs.h"
 
 namespace mlir::tt::ttnn {
 
@@ -17,14 +18,14 @@ class DFShardingPolicy {
 private:
   Operation *rootOp;
   std::vector<ShardChainConfig> *shardChainConfigs;
-  llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> legalLayouts;
+  llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> legalLayouts;
   llvm::DenseMap<func::FuncOp, llvm::SmallVector<Operation *>> *schedule;
   unsigned usableL1CacheSize = 0;
 
 public:
   DFShardingPolicy(
       Operation *rootOp, std::vector<ShardChainConfig> &shardChainConfigs,
-      const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+      const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
           &legalLayouts,
       llvm::DenseMap<func::FuncOp, llvm::SmallVector<Operation *>> &schedule,
       unsigned usableL1CacheSize)

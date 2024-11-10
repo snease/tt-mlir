@@ -17,13 +17,13 @@ enum class ShardingPolicyType {
 };
 
 struct ShardingAnalysisInput {
-  llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> legalLayouts;
+  llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> legalLayouts;
   unsigned usableL1CacheSize = 0;
 
   ShardingAnalysisInput() : legalLayouts() {}
 
   ShardingAnalysisInput(
-      const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+      const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
           &legalLayouts,
       unsigned usableL1CacheSize)
       : legalLayouts(legalLayouts), usableL1CacheSize(usableL1CacheSize) {}
@@ -38,14 +38,14 @@ struct ShardingAnalysisInput {
 };
 
 struct ShardingAnalysisResult {
-  llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>> legalLayouts;
+  llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>> legalLayouts;
   std::unordered_set<Edge> reshardedEdges;
   llvm::DenseMap<func::FuncOp, llvm::SmallVector<Operation *>> schedule;
 
   ShardingAnalysisResult() : legalLayouts(), reshardedEdges(), schedule() {}
 
   ShardingAnalysisResult(
-      const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+      const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
           &legalLayouts,
       const std::unordered_set<Edge> &reshardedEdges)
       : legalLayouts(legalLayouts), reshardedEdges(reshardedEdges) {}

@@ -14,7 +14,7 @@ namespace mlir::tt::ttnn {
 struct ShardSpec {
   Operation *op;
   uint tensorSplitFactor;
-  tt::LayoutAttr layout;
+  TensorConfigAttr layout;
 };
 
 // Enum to track the state of the shard chain.
@@ -37,12 +37,12 @@ public:
   ShardChainConfig() : shardSpecs(), state() {}
 
   ShardSolver
-  resolve(const llvm::DenseMap<Operation *, std::vector<tt::LayoutAttr>>
+  resolve(const llvm::DenseMap<Operation *, std::vector<TensorConfigAttr>>
               &legalLayouts,
           unsigned usableL1CacheSize);
   void build();
   void
-  complete(const llvm::DenseMap<Operation *, tt::LayoutAttr> &selectedOpLayout,
+  complete(const llvm::DenseMap<Operation *, TensorConfigAttr> &selectedOpLayout,
            std::unordered_set<Edge> &reshardedEdges);
 
   bool isEmpty() { return shardSpecs.empty(); }

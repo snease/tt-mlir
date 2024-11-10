@@ -96,4 +96,100 @@ public:
   }
 };
 
+// class TTNNLayout : public impl::TTNNLayoutBase<TTNNLayout> {
+//
+// public:
+//   using impl::TTNNLayoutBase<TTNNLayout>::TTNNLayoutBase;
+//
+//   void runOnOperation() final {
+//     ModuleOp mOp = getOperation();
+//     mOp->walk([&](func::FuncOp func) {
+//       func->walk([&](Operation *op) {
+//         // Skip operations which don't return RankedTensorType (like
+//         // GetDeviceOp)
+//         if (op->getNumResults() == 0 ||
+//             !isa<RankedTensorType>(op->getResult(0).getType())) {
+//           return;
+//         }
+//
+//         RankedTensorType resTy =
+//             cast<RankedTensorType>(op->getResult(0).getType());
+//         assert(isa<mlir::tt::LayoutAttr>(resTy.getEncoding()) &&
+//                "Result does not have layout attribute!");
+//         mlir::tt::LayoutAttr resLayoutAttr =
+//             cast<mlir::tt::LayoutAttr>(resTy.getEncoding());
+//
+//         op->getName().print(llvm::errs());
+//
+//         llvm::errs() << "\n has layout: ";
+//         mlir::tt::TensorMemoryLayout layout = resLayoutAttr.getMemLayout();
+//         llvm::errs() << layout;
+//
+//         llvm::errs() << "\n with stride: ";
+//         auto strideInt64 = resLayoutAttr.getStride(resTy.getShape());
+//         for (auto stride : strideInt64) {
+//           llvm::errs() << stride << " ";
+//         }
+//
+//         llvm::errs() << "\n with grid: ";
+//         mlir::tt::GridAttr grid = resLayoutAttr.getGrid();
+//         for (auto dim : grid.getShape()) {
+//           llvm::errs() << dim << " ";
+//         }
+//
+//         llvm::errs() << "\n memory space: ";
+//         MemRefType memRefType = resLayoutAttr.getMemref();
+//         mlir::tt::MemorySpace memorySpace = resLayoutAttr.getMemorySpace();
+//         llvm::errs() << memorySpace;
+//
+//         llvm::errs() << "\n shard size: ";
+//         for (auto shardShape : memRefType.getShape()) {
+//           llvm::errs() << shardShape << " ";
+//         }
+//
+//         llvm::errs() << "\n element type: ";
+//         Type memrefType = memRefType.getElementType();
+//         if (resLayoutAttr.isTiled()) {
+//           llvm::errs() << "tiled ";
+//           TileType tileType = cast<TileType>(memrefType);
+//           llvm::errs() << tileType.getElementType();
+//           llvm::errs() << " ";
+//           for (auto tileShape : tileType.getShape()) {
+//             llvm::errs() << tileShape << " ";
+//           }
+//         } else {
+//           llvm::errs() << "not tiled ";
+//           llvm::errs() << memrefType;
+//         }
+//
+//         llvm::errs() << "\n";
+//         llvm::errs() << "\n";
+//
+//         // mlir::tt::ttnn::TensorConfigAttr attr =
+//         //     TensorConfigAttr::from(&getContext(), resLayoutAttr);
+//         // attr.getStride(ArrayRef<int64_t>(resTy.getShape()));
+//         //
+//         // llvm::errs() << "\n";
+//         //
+//         // attr.getElementType();
+//         // attr.getScalarElementType();
+//         // attr.getElementSizeBytes();
+//         // attr.getShardShape();
+//         // attr.getPhysicalShape(ArrayRef<int64_t>(resTy.getShape()));
+//         // attr.getTiledShape(ArrayRef<int64_t>(resTy.getShape()));
+//         // attr.getMemrefSizeBytes();
+//         // attr.hasShardedTensorMemoryLayout();
+//         // attr.hasShardedL1TensorMemoryLayout();
+//         // attr.isSystemBufferType();
+//         // attr.isDeviceBufferType();
+//         // attr.isTiled();
+//         // attr.getLinear();
+//         // attr.getGrid();
+//         // attr.getMemref();
+//         // attr.getIdentityTileLinearMap();
+//       });
+//     });
+//   }
+// };
+
 } // namespace mlir::tt::ttnn

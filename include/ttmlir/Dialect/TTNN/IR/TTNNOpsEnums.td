@@ -7,6 +7,59 @@
 
 include "mlir/IR/EnumAttr.td"
 
+// TODO: milant Check supported data types in ttnn
+def TTNN_Float32 : I32EnumAttrCase<"Float32", 0, "f32">;
+def TTNN_Float16 : I32EnumAttrCase<"Float16", 1, "f16">;
+def TTNN_BFloat16 : I32EnumAttrCase<"BFloat16", 2, "bf16">;
+def TTNN_BFP_Float8 : I32EnumAttrCase<"BFP_Float8", 3, "bfp_f8">;
+def TTNN_BFP_BFloat8 : I32EnumAttrCase<"BFP_BFloat8", 4, "bfp_bf8">;
+def TTNN_BFP_Float4 : I32EnumAttrCase<"BFP_Float4", 5, "bfp_f4">;
+def TTNN_BFP_BFloat4 : I32EnumAttrCase<"BFP_BFloat4", 6, "bfp_bf4">;
+def TTNN_BFP_Float2 : I32EnumAttrCase<"BFP_Float2", 7, "bfp_f2">;
+def TTNN_BFP_BFloat2 : I32EnumAttrCase<"BFP_BFloat2", 8, "bfp_bf2">;
+def TTNN_UInt32 : I32EnumAttrCase<"UInt32", 9, "u32">;
+def TTNN_UInt16 : I32EnumAttrCase<"UInt16", 10, "u16">;
+def TTNN_UInt8 : I32EnumAttrCase<"UInt8", 11, "u8">;
+
+def TTNN_DataType : I32EnumAttr<"DataType", "TT DataTypes",
+                           [
+                            TTNN_Float32,
+                            TTNN_Float16,
+                            TTNN_BFloat16,
+                            TTNN_BFP_Float8,
+                            TTNN_BFP_BFloat8,
+                            TTNN_BFP_Float4,
+                            TTNN_BFP_BFloat4,
+                            TTNN_BFP_Float2,
+                            TTNN_BFP_BFloat2,
+                            TTNN_UInt32,
+                            TTNN_UInt16,
+                            TTNN_UInt8
+                           ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::tt::ttnn";
+  let stringToSymbolFnName = "DataTypeStringToEnum";
+  let symbolToStringFnName = "DataTypeEnumToString";
+}
+
+def TTNN_Undef : I32EnumAttrCase<"Undef", 0, "undef">;
+def TTNN_Zero : I32EnumAttrCase<"Zero", 1, "zero">;
+def TTNN_One : I32EnumAttrCase<"One", 2, "one">;
+def TTNN_Inf : I32EnumAttrCase<"Inf", 3, "inf">;
+def TTNN_NegInf : I32EnumAttrCase<"NegInf", 4, "neginf">;
+
+def TTNN_OOBVal : I32EnumAttr<"OOBVal", "TT OOBVal",
+                           [
+                            TTNN_Undef,
+                            TTNN_Zero,
+                            TTNN_One,
+                            TTNN_Inf,
+                            TTNN_NegInf,
+                           ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::tt::ttnn";
+}
+
 def TTNN_Layout_RowMajor : I32EnumAttrCase<"RowMajor", 0, "row_major">;
 def TTNN_Layout_Tile : I32EnumAttrCase<"Tile", 1, "tile">;
 def TTNN_Layout_Invalid : I32EnumAttrCase<"Invalid", 2, "invalid">;

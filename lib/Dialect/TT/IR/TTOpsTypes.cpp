@@ -338,21 +338,6 @@ unsigned SystemDescAttr::getPcieAddressAlignBytes(unsigned chipIndex) const {
   return getChipDescs()[chipIndex].getPcieAddressAlignBytes();
 }
 
-static mlir::MemRefType buildMemRef(::mlir::MLIRContext *context,
-                                    ::llvm::ArrayRef<int64_t> shardShape,
-                                    ::mlir::Type elementType,
-                                    MemorySpace memorySpace) {
-  ::llvm::SmallVector<int64_t> scalarShardShape(shardShape);
-  if (mlir::isa<TileType>(elementType)) {
-    scalarShardShape =
-        mlir::cast<TileType>(elementType).getTiledShape(scalarShardShape);
-  }
-  return mlir::MemRefType::get(
-      scalarShardShape, elementType,
-      mlir::AffineMap::getMultiDimIdentityMap(scalarShardShape.size(), context),
-      MemorySpaceAttr::get(context, memorySpace));
-}
-
 //
 // This function creates an affine map that represents collapsing the tensor
 // dims onto an n-dimensional grid. E.g. (Where <> is some join operator)
@@ -377,7 +362,7 @@ static mlir::MemRefType buildMemRef(::mlir::MLIRContext *context,
 //   - 7D tensor onto a 4D grid collapseIntervals=[(0, 3), (-3, -1)]:
 //       (d0, d1, d2, d3, d4, d5, d6) -> (d0 <> d1 <> d2, d3, d4 <> d5, d6)
 //
-static mlir::AffineMap collapsedLinearAffineMap(
+mlir::AffineMap collapsedLinearAffineMap(
     ::mlir::MLIRContext *context, ::llvm::ArrayRef<int64_t> shape,
     ::llvm::ArrayRef<int64_t> gridShape,
     ::llvm::ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals) {
@@ -430,7 +415,7 @@ static mlir::AffineMap collapsedLinearAffineMap(
   return map;
 }
 
-static mlir::SmallVector<std::int64_t>
+mlir::SmallVector<std::int64_t>
 calculateLogicalShardShape(mlir::ArrayRef<int64_t> tensorShape,
                            mlir::AffineMap linear, GridAttr grid) {
   assert(linear.getNumResults() == grid.getShape().size());
@@ -441,6 +426,7 @@ calculateLogicalShardShape(mlir::ArrayRef<int64_t> tensorShape,
     shardShape[i] =
         (logicalShape[i] + grid.getShape()[i] - 1) / grid.getShape()[i];
   }
+
   return shardShape;
 }
 
@@ -456,7 +442,7 @@ LayoutAttr LayoutAttr::get(
   auto linear = collapsedLinearAffineMap(context, tensorShape, grid.getShape(),
                                          collapseIntervals);
   auto shardShape = calculateLogicalShardShape(tensorShape, linear, grid);
-  auto memref = buildMemRef(context, shardShape, elementType, memorySpace);
+  auto memref = buildMemRef<MemorySpace, MemorySpaceAttr>(context, shardShape, elementType, memorySpace);
   return get(context, linear, oobVal, grid, memref, memLayout);
 }
 
@@ -624,7 +610,7 @@ LayoutAttr LayoutAttr::withElementType(::mlir::MLIRContext *context,
                                        Type elementType) {
   return LayoutAttr::get(
       context, getLinear(), getOobVal(), getGrid(),
-      buildMemRef(context, getShardShape(), elementType, getMemorySpace()),
+      buildMemRef<MemorySpace, MemorySpaceAttr>(context, getShardShape(), elementType, getMemorySpace()),
       getMemLayout());
 }
 
@@ -632,7 +618,7 @@ LayoutAttr LayoutAttr::withMemorySpace(::mlir::MLIRContext *context,
                                        MemorySpace memorySpace) {
   return LayoutAttr::get(
       context, getLinear(), getOobVal(), getGrid(),
-      buildMemRef(context, getShardShape(), getElementType(), memorySpace),
+      buildMemRef<MemorySpace, MemorySpaceAttr>(context, getShardShape(), getElementType(), memorySpace),
       getMemLayout());
 }
 
@@ -640,7 +626,7 @@ LayoutAttr LayoutAttr::withMemoryLayout(::mlir::MLIRContext *context,
                                         TensorMemoryLayout memLayout) {
   return LayoutAttr::get(
       context, getLinear(), getOobVal(), getGrid(),
-      buildMemRef(context, getShardShape(), getElementType(), getMemorySpace()),
+      buildMemRef<MemorySpace, MemorySpaceAttr>(context, getShardShape(), getElementType(), getMemorySpace()),
       memLayout);
 }
 
@@ -1172,3 +1158,4 @@ void TTDialect::registerTypes() {
 #include "ttmlir/Dialect/TT/IR/TTOpsTypes.cpp.inc"
       >();
 }
+

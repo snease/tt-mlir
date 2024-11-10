@@ -40,4 +40,11 @@ def TTNNOptimizer: Pass<"ttnn-optimizer", "::mlir::ModuleOp"> {
   ];
 }
 
+def TTNNLayout : Pass<"ttnn-layout", "::mlir::ModuleOp"> {
+  let summary = "Insert deallocate ops for tensors.";
+  let description = [{
+    This pass inserts deallocate ops after a tensor value's last use.
+  }];
+}
+
 #endif
