@@ -477,28 +477,38 @@ public:
                 operandType, rewriter.getFloatAttr(rewriter.getF32Type(),
                                                    adaptor.getEpsilon())));
 
-    rewriter.create<mlir::tt::ttir::SubtractOp>(
-        op.getLoc(), operand, broadcast_mean, centered_operand,
+    ttir::SubtractOp centered_operand_result =
+        rewriter.create<mlir::tt::ttir::SubtractOp>(
+            op.getLoc(), operand, broadcast_mean, centered_operand,
+            binary_constraints);
+    ttir::AddOp variance_plus_epsilon_result =
+        rewriter.create<mlir::tt::ttir::AddOp>(
+            op.getLoc(), broadcast_variance, epsilonConstantTensor,
+            variance_plus_epsilon, binary_constraints);
+    ttir::SqrtOp stddev_result = rewriter.create<mlir::tt::ttir::SqrtOp>(
+        op.getLoc(), variance_plus_epsilon_result.getResults().front(), stddev,
         binary_constraints);
-    rewriter.create<mlir::tt::ttir::AddOp>(
-        op.getLoc(), broadcast_variance, epsilonConstantTensor,
-        variance_plus_epsilon, binary_constraints);
-    rewriter.create<mlir::tt::ttir::SqrtOp>(op.getLoc(), variance_plus_epsilon,
-                                            stddev, binary_constraints);
 
     // Instead of a div op, we need to have a reciprocal and mul op, since
     // broadcast in div op is currently not supported in ttnn. This should be a
     // temporary solution.
-    rewriter.create<mlir::tt::ttir::ReciprocalOp>(
-        op.getLoc(), stddev, recip_stddev, binary_constraints);
-    rewriter.create<mlir::tt::ttir::MultiplyOp>(
-        op.getLoc(), centered_operand, recip_stddev, normalized_operand,
-        binary_constraints);
-    rewriter.create<mlir::tt::ttir::MultiplyOp>(
-        op.getLoc(), broadcast_scale, normalized_operand, intermediate_tensor,
-        binary_constraints);
+    ttir::ReciprocalOp recip_stddev_result =
+        rewriter.create<mlir::tt::ttir::ReciprocalOp>(
+            op.getLoc(), stddev_result.getResults().front(), recip_stddev,
+            binary_constraints);
+    ttir::MultiplyOp normalized_operand_result =
+        rewriter.create<mlir::tt::ttir::MultiplyOp>(
+            op.getLoc(), centered_operand_result.getResults().front(),
+            recip_stddev_result.getResults().front(), normalized_operand,
+            binary_constraints);
+    ttir::MultiplyOp intermediate_tensor_result =
+        rewriter.create<mlir::tt::ttir::MultiplyOp>(
+            op.getLoc(), broadcast_scale,
+            normalized_operand_result.getResults().front(), intermediate_tensor,
+            binary_constraints);
     rewriter.replaceOpWithNewOp<mlir::tt::ttir::AddOp>(
-        op, intermediate_tensor, broadcast_offset, result, binary_constraints);
+        op, intermediate_tensor_result.getResults().front(), broadcast_offset,
+        result, binary_constraints);
     return success();
   }
 };
