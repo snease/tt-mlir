@@ -474,6 +474,14 @@ namespace mlir::tt::ttnn {
   ::mlir::RankedTensorType weightType = getWeight().getType();
   ::mlir::RankedTensorType outputType = getResult().getType();
 
+  mlir::tt::LayoutAttr inputLayout =
+      cast<mlir::tt::LayoutAttr>(inputType.getEncoding());
+  if (isDeviceMemorySpace(inputLayout.getMemorySpace()) &&
+      inputLayout.isTiled()) {
+    return emitOpError(
+        "Embedding input tensor cannot be tiled when running on device");
+  }
+
   // inputType can have any rank
 
   // weightType must have rank of 2: (dictionary_size, embedding_size)
@@ -553,6 +561,44 @@ static bool isValidDeviceLayout(::mlir::tt::TensorMemoryLayout layout) {
       }
     }
   }
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// TypecastOp
+// ===----------------------------------------------------------------------===//
+
+// TypecastOp verification
+::mlir::LogicalResult mlir::tt::ttnn::TypecastOp::verify() {
+  ::mlir::RankedTensorType inputType = getInput().getType();
+  mlir::tt::LayoutAttr inputLayout =
+      cast<mlir::tt::LayoutAttr>(inputType.getEncoding());
+
+  ::mlir::RankedTensorType outputType = getResult().getType();
+  mlir::tt::LayoutAttr outputLayout =
+      cast<mlir::tt::LayoutAttr>(outputType.getEncoding());
+
+  if (inputType.getShape() != outputType.getShape()) {
+    return emitOpError("Input and output tensor shapes must match");
+  }
+
+  if (inputLayout.getMemLayout() != outputLayout.getMemLayout()) {
+    return emitOpError("Input and output tensor memory layouts must match");
+  }
+
+  if (inputLayout.getMemorySpace() != outputLayout.getMemorySpace()) {
+    return emitOpError("Input and output tensor memory spaces must match");
+  }
+
+  if (inputLayout.getShardShape() != outputLayout.getShardShape()) {
+    return emitOpError("Input and output tensor shard shapes must match");
+  }
+
+  // if (inputLayout.isTiled() != outputLayout.isTiled()) {
+  //   return emitOpError("Input and output tensors must either both be tiled or
+  //   both not be tiled");
+  // }
+
   return success();
 }
 

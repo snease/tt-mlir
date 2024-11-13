@@ -210,16 +210,27 @@ public:
 
 private:
   bool shouldForceRowMajor(ttir::ToLayoutOp op) const {
-    for (mlir::Operation *user : op.getResult().getUsers()) {
+    return checkForRowMajorRequirement(op.getResult());
+  }
+
+  bool checkForRowMajorRequirement(mlir::Value result) const {
+    for (mlir::Operation *user : result.getUsers()) {
+      // If the user is one of the operations requiring row-major layout, return
+      // true.
       if (isa<ttir::Conv2dOp>(user) || isa<ttir::MaxPool2dOp>(user) ||
           isa<ttir::SliceOp>(user) || isa<ttir::EmbeddingOp>(user)) {
         return true;
       }
+      // If the user is a typecast or similar pass-through operation, check
+      // further.
+      if (isa<ttir::TypecastOp>(user)) {
+        if (checkForRowMajorRequirement(user->getResult(0))) {
+          return true;
+        }
+      }
     }
-
     return false;
   }
-
   RankedTensorType
   getLayoutForcedResultTensor(ConversionPatternRewriter &rewriter,
                               RankedTensorType oldOutput,
