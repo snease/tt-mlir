@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "ttmlir/Dialect/TT/IR/TT.h"
+#include "ttmlir/Dialect/TT/IR/TTOpsTypes.h"
 #include "ttmlir/Dialect/TTIR/Transforms/Passes.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -206,10 +207,28 @@ public:
   const TypeConverter *converter;
 };
 
+static bool checkForRowMajorRequirement(mlir::Value result) {
+  for (mlir::Operation *user : result.getUsers()) {
+    // If the user is one of the operations requiring row-major layout, return
+    // true.
+    if (isa<ttir::Conv2dOp>(user) || isa<ttir::MaxPool2dOp>(user) ||
+        isa<ttir::SliceOp>(user) || isa<ttir::EmbeddingOp>(user)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 static std::optional<Value>
 createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
                  MemorySpace desiredMemorySpace,
                  TensorMemoryLayout desiredMemLayout, bool tiled) {
+
+  if (isDeviceMemorySpace(desiredMemorySpace) &&
+      checkForRowMajorRequirement(input)) {
+    tiled = false;
+  }
 
   auto ty = mlir::cast<RankedTensorType>(input.getType());
   auto currLayout = mlir::cast<LayoutAttr>(ty.getEncoding());

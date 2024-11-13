@@ -158,32 +158,6 @@ public:
     bool isOutputOnHost = (outputBufferType == ttnn::BufferType::SystemMemory);
 
     RankedTensorType result = mlir::cast<RankedTensorType>(op.getType());
-    if (!isOutputOnHost) {
-      // TODO(bug #665):
-      // Binary ops fail with row major layout in ttnn, defaulting to and
-      // assuming tile layout for all device tensors...
-      // Note: mlir doesn't know about this, so tensors may still appear as row
-      // major in the generated mlir
-      // TODO(bug #875):
-      // Remove the following code block once constraints modelling is
-      // implemented on dialect level
-      //
-      // Default to Tile layout unless op supports only RowMajor layout
-      //
-      ttnn::Layout newOutputLayoutEnum =
-          shouldForceRowMajor(op) ? ttnn::Layout::RowMajor : ttnn::Layout::Tile;
-
-      // If the layout of the output tensor changed as a result of forcing the
-      // layout update the tensor type
-      if (outputLayoutEnum != newOutputLayoutEnum) {
-        result =
-            getLayoutForcedResultTensor(rewriter, result, newOutputLayoutEnum);
-        op.getResult().setType(result);
-        outputLayoutAttr = mlir::cast<tt::LayoutAttr>(result.getEncoding());
-        outputMemref = outputLayoutAttr.getMemref();
-        outputLayoutEnum = newOutputLayoutEnum;
-      }
-    }
 
     ttnn::LayoutAttr outputLayout =
         ttnn::LayoutAttr::get(rewriter.getContext(), outputLayoutEnum);
