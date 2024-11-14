@@ -224,12 +224,6 @@ static std::optional<Value>
 createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
                  MemorySpace desiredMemorySpace,
                  TensorMemoryLayout desiredMemLayout, bool tiled) {
-
-  if (isDeviceMemorySpace(desiredMemorySpace) &&
-      checkForRowMajorRequirement(input)) {
-    tiled = false;
-  }
-
   auto ty = mlir::cast<RankedTensorType>(input.getType());
   auto currLayout = mlir::cast<LayoutAttr>(ty.getEncoding());
   auto currMemorySpace = currLayout.getMemorySpace();
@@ -275,19 +269,19 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
       ->getResult(0);
 }
 
-static std::optional<Value>
-createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
-                 OperandConstraint operandConstraint,
-                 MemorySpace defaultMemorySpace,
-                 TensorMemoryLayout defaultDeviceMemoryLayout) {
+static std::optional<Value> createToLayoutOp(
+    PatternRewriter &rewriter, Location loc, Value input,
+    OperandConstraint operandConstraint, MemorySpace defaultMemorySpace,
+    TensorMemoryLayout defaultDeviceMemoryLayout, bool forceRowMajor) {
   auto desiredMemorySpace =
       getLegalMemorySpace(operandConstraint, defaultMemorySpace);
 
   auto desiredMemoryLayout = getLegalTensorMemoryLayout(
       operandConstraint, desiredMemorySpace, defaultDeviceMemoryLayout);
 
-  bool tiled =
-      !bitEnumContainsAny(operandConstraint, OperandConstraint::Scalar);
+  bool tiled = forceRowMajor ? false
+                             : !bitEnumContainsAny(operandConstraint,
+                                                   OperandConstraint::Scalar);
   return createToLayoutOp(rewriter, loc, input, desiredMemorySpace,
                           desiredMemoryLayout, tiled);
 }
@@ -331,9 +325,15 @@ public:
               .getValue();
       Location newLoc =
           appendInputSuffix(op.getLoc(), operand.getOperandNumber());
-      auto desiredLayout =
-          createToLayoutOp(rewriter, newLoc, operand.get(), operandConstraint,
-                           defaultMemorySpace, defaultDeviceMemoryLayout);
+      bool forceRowMajor = false;
+      if (isResult) {
+        forceRowMajor =
+            checkForRowMajorRequirement(op.getOperation()->getResult(0));
+      }
+
+      auto desiredLayout = createToLayoutOp(
+          rewriter, newLoc, operand.get(), operandConstraint,
+          defaultMemorySpace, defaultDeviceMemoryLayout, forceRowMajor);
 
       if (desiredLayout) {
         rewriter.modifyOpInPlace(op, [&]() {
