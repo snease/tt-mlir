@@ -594,10 +594,10 @@ static bool isValidDeviceLayout(::mlir::tt::TensorMemoryLayout layout) {
     return emitOpError("Input and output tensor shard shapes must match");
   }
 
-  // if (inputLayout.isTiled() != outputLayout.isTiled()) {
-  //   return emitOpError("Input and output tensors must either both be tiled or
-  //   both not be tiled");
-  // }
+  if (inputLayout.isTiled() != outputLayout.isTiled()) {
+    return emitOpError("Input and output tensors must either both be tiled or "
+                       "both not be tiled");
+  }
 
   return success();
 }

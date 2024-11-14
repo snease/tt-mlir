@@ -207,14 +207,10 @@ public:
   const TypeConverter *converter;
 };
 
-static bool checkForRowMajorRequirement(mlir::Value result) {
-  for (mlir::Operation *user : result.getUsers()) {
-    // If the user is one of the operations requiring row-major layout, return
-    // true.
-    if (isa<ttir::Conv2dOp>(user) || isa<ttir::MaxPool2dOp>(user) ||
-        isa<ttir::SliceOp>(user) || isa<ttir::EmbeddingOp>(user)) {
-      return true;
-    }
+static bool checkForRowMajorRequirement(Operation *op) {
+  if (isa<ttir::Conv2dOp>(op) || isa<ttir::MaxPool2dOp>(op) ||
+      isa<ttir::SliceOp>(op) || isa<ttir::EmbeddingOp>(op)) {
+    return true;
   }
 
   return false;
@@ -229,6 +225,7 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
   auto currMemorySpace = currLayout.getMemorySpace();
   auto currElementType = currLayout.getElementType();
   auto currMemLayout = currLayout.getMemLayout();
+
   auto desiredElementType =
       tiled ? rewriter.getType<TileType>(ty.getElementType())
             : ty.getElementType();
@@ -269,19 +266,24 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
       ->getResult(0);
 }
 
-static std::optional<Value> createToLayoutOp(
-    PatternRewriter &rewriter, Location loc, Value input,
-    OperandConstraint operandConstraint, MemorySpace defaultMemorySpace,
-    TensorMemoryLayout defaultDeviceMemoryLayout, bool forceRowMajor) {
+static std::optional<Value>
+createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
+                 OperandConstraint operandConstraint,
+                 MemorySpace defaultMemorySpace,
+                 TensorMemoryLayout defaultDeviceMemoryLayout,
+                 bool shouldForceRowMajor = false) {
   auto desiredMemorySpace =
       getLegalMemorySpace(operandConstraint, defaultMemorySpace);
 
   auto desiredMemoryLayout = getLegalTensorMemoryLayout(
       operandConstraint, desiredMemorySpace, defaultDeviceMemoryLayout);
 
-  bool tiled = forceRowMajor ? false
-                             : !bitEnumContainsAny(operandConstraint,
-                                                   OperandConstraint::Scalar);
+  bool tiled =
+      !bitEnumContainsAny(operandConstraint, OperandConstraint::Scalar);
+  if (isDeviceMemorySpace(desiredMemorySpace)) {
+    tiled = !shouldForceRowMajor;
+  }
+
   return createToLayoutOp(rewriter, loc, input, desiredMemorySpace,
                           desiredMemoryLayout, tiled);
 }
@@ -310,6 +312,7 @@ public:
 
     assert(op->template hasTrait<TTIROp::Trait>());
     bool modified = false;
+    bool shouldForceRowMajor = checkForRowMajorRequirement(op);
     for (auto &operand : op->getOpOperands()) {
       bool isResult = op.isDpsInit(&operand);
 
@@ -325,15 +328,10 @@ public:
               .getValue();
       Location newLoc =
           appendInputSuffix(op.getLoc(), operand.getOperandNumber());
-      bool forceRowMajor = false;
-      if (isResult) {
-        forceRowMajor =
-            checkForRowMajorRequirement(op.getOperation()->getResult(0));
-      }
 
       auto desiredLayout = createToLayoutOp(
           rewriter, newLoc, operand.get(), operandConstraint,
-          defaultMemorySpace, defaultDeviceMemoryLayout, forceRowMajor);
+          defaultMemorySpace, defaultDeviceMemoryLayout, shouldForceRowMajor);
 
       if (desiredLayout) {
         rewriter.modifyOpInPlace(op, [&]() {
