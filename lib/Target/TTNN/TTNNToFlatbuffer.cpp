@@ -346,6 +346,21 @@ createOp(FlatbufferObjectCache &cache, MatmulOp op) {
 }
 // ANCHOR_END: adding_an_op_matmul_serialize_to_binary
 
+::flatbuffers::Offset<::tt::target::ttnn::ScatterOp>
+createScatterOp(FlatbufferObjectCache &cache, ScatterOp op) {
+  auto input =
+      cache.at<::tt::target::TensorRef>(getOperandThroughDPSOps(op.getInput()));
+  auto scatterIndices = cache.at<::tt::target::TensorRef>(
+      getOperandThroughDPSOps(op.getScatterIndices()));
+  auto update = cache.at<::tt::target::TensorRef>(
+      getOperandThroughDPSOps(op.getUpdate()));
+  auto out = cache.getOrCreate(op.getResult(), tensorValueToFlatbuffer,
+                               kHostAllocatedAddress, kHostAllocatedSize);
+  int32_t dimension = op.getDimension();
+  return ::tt::target::ttnn::CreateScatterOp(*cache.fbb, input, scatterIndices,
+                                             update, out, dimension);
+}
+
 ::flatbuffers::Offset<::tt::target::ttnn::Conv2dOp>
 createOp(FlatbufferObjectCache &cache, Conv2dOp op) {
   auto in0 =
@@ -883,6 +898,10 @@ emitTTNNOperation(FlatbufferObjectCache &cache, Operation *op,
   }
   if (auto tanhOp = dyn_cast<TanhOp>(op); tanhOp) {
     return createOperation(cache, createEltwiseOp(cache, tanhOp), debugString);
+  }
+  if (auto scatterOp = dyn_cast<ScatterOp>(op); scatterOp) {
+    return createOperation(cache, createScatterOp(cache, scatterOp),
+                           debugString);
   }
 
   llvm_unreachable("unhandled op in emitTTNNOperation");

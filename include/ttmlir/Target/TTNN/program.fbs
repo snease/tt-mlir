@@ -154,6 +154,14 @@ table SoftmaxOp {
   dimension: int32;
 }
 
+table ScatterOp {
+  in: tt.target.TensorRef;
+  scatter_indices: tt.target.TensorRef;
+  update: tt.target.TensorRef;
+  out: tt.target.TensorRef;
+  dimension: int32;
+}
+
 table TransposeOp {
   in: tt.target.TensorRef;
   out: tt.target.TensorRef;
@@ -264,6 +272,7 @@ union OpType {
   MaxPool2dOp,
   DeallocateOp,
   AllGatherOp,
+  ScatterOp
 }
 
 table Operation {

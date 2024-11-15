@@ -908,6 +908,72 @@ public:
   }
 };
 
+class ScatterOpConversionPattern : public OpConversionPattern<ttir::ScatterOp> {
+public:
+  using OpConversionPattern<ttir::ScatterOp>::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(ttir::ScatterOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    // We currently do not support custom functions in the scatter function,
+    // which is a possbility in StableHLO dialect. See issue:
+    if (!match_simple_block(adaptor.getUpdateComputation())) {
+      return rewriter.notifyMatchFailure(
+          op, "Currently not supporting custom scatter function in TTNN "
+              "dialect and TT-metal.");
+    }
+
+    auto outputType = mlir::cast<RankedTensorType>(
+        this->getTypeConverter()->convertType(op.getType()));
+    rewriter.replaceOpWithNewOp<ttnn::ScatterOp>(
+        op, outputType, adaptor.getInput(), adaptor.getScatterIndices(),
+        adaptor.getUpdate(), adaptor.getScatterDimsToOperandDims()[0],
+        adaptor.getOutput());
+
+    return success();
+  }
+
+private:
+  /*
+    Matches if the inner block of the scatter operation looks like this:
+      {
+        ^bb0(%arg3: tensor<1xf32>, %arg4: tensor<1xf32>):
+          "ttir.yield" %arg4 : tensor<1xf32>
+      }
+    Which means it is a simple scatter, only taking the values from the second
+    operand and puts it into the first one.
+  */
+  bool match_simple_block(Region &region) const {
+    if (!region.hasOneBlock()) {
+      return false;
+    }
+    Block &block = region.front();
+    if (block.getNumArguments() != 2) {
+      return false;
+    }
+    auto argType1 =
+        mlir::cast<RankedTensorType>(block.getArgument(0).getType());
+    auto argType2 =
+        mlir::cast<RankedTensorType>(block.getArgument(1).getType());
+    if (!argType1 || !argType2) {
+      return false;
+    }
+    if (block.getOperations().size() != 1) {
+      return false;
+    }
+    auto returnOp = dyn_cast<ttir::YieldOp>(&block.front());
+    if (!returnOp) {
+      return false;
+    }
+    if (returnOp.getNumOperands() != 1 ||
+        returnOp.getOperand(0) != block.getArgument(1)) {
+      return false;
+    }
+    return true;
+  }
+};
+
 namespace mlir::tt {
 
 void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
@@ -977,7 +1043,8 @@ void populateTTIRToTTNNPatterns(MLIRContext *ctx, RewritePatternSet &patterns,
            Conv2dOpConversionPattern,
            MaxPool2dOpConversionPattern,
            SubtractOpConversionPattern,
-           AllGatherOpConversionPattern
+           AllGatherOpConversionPattern,
+           ScatterOpConversionPattern
            >(typeConverter, ctx);
   // ANCHOR_END: op_rewriter_pattern_set
   // clang-format on

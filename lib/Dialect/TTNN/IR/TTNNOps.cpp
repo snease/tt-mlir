@@ -785,6 +785,10 @@ static bool isValidDeviceLayout(TensorMemoryLayout layout) {
   return success();
 }
 
+//===----------------------------------------------------------------------===//
+// AllGatherOp
+//===----------------------------------------------------------------------===//
+
 ::mlir::LogicalResult AllGatherOp::verify() {
   ::mlir::RankedTensorType inputType = getInput().getType();
   int32_t dim = getDim();
@@ -795,6 +799,26 @@ static bool isValidDeviceLayout(TensorMemoryLayout layout) {
 
   return success();
 }
+
+//===----------------------------------------------------------------------===//
+// ScatterOp
+//===----------------------------------------------------------------------===//
+
+::mlir::LogicalResult ScatterOp::verify() {
+
+  ArrayRef<int64_t> input_shape =
+      mlir::cast<RankedTensorType>(getInput().getType()).getShape();
+
+  if (input_shape[getDimension()] != 1) {
+    return emitOpError("Dimension to insert the slice into must be of size 1");
+  }
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// ReduceScatterOp
+//===----------------------------------------------------------------------===//
 
 ::mlir::LogicalResult ReduceScatterOp::verify() {
   // TODO(gfengTT)

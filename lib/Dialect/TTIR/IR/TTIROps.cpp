@@ -1013,6 +1013,28 @@ mlir::tt::ttir::ToLayoutOp::compoundComponents() {
 }
 
 //===----------------------------------------------------------------------===//
+// ScatterOp
+//===----------------------------------------------------------------------===//
+::mlir::LogicalResult mlir::tt::ttir::ScatterOp::verify() {
+
+  ArrayRef<int64_t> input_shape =
+      mlir::cast<RankedTensorType>(getInput().getType()).getShape();
+
+  if (getUpdateWindowDims().size() + getInsertedWindowDims().size() !=
+      input_shape.size()) {
+    return emitOpError("Batching currently not supported");
+  }
+
+  for (uint64_t inserted_window_dims : getInsertedWindowDims()) {
+    if (input_shape[inserted_window_dims] != 1) {
+      return emitOpError("Dimension size to slice into must be 1");
+    }
+  }
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // GenericOp
 //===----------------------------------------------------------------------===//
 

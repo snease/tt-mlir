@@ -26,6 +26,7 @@
 #include "operations/normalization/softmax.h"
 #include "operations/pool/maxpool2d.h"
 #include "operations/reduction/reduction.h"
+#include "operations/scatter/scatter.h"
 #include "tt/runtime/detail/debug.h"
 #include "tt/runtime/detail/logger.h"
 #include "tt/runtime/ttnn/types.h"
@@ -185,6 +186,9 @@ void ProgramExecutor::runOperation(const ::tt::target::ttnn::Operation *op) {
   }
   case ::tt::target::ttnn::OpType::AllGatherOp: {
     return operations::ccl::run(op->type_as_AllGatherOp(), context);
+  }
+  case ::tt::target::ttnn::OpType::ScatterOp: {
+    return operations::scatter::run(op->type_as_ScatterOp(), context);
   }
   default: {
     LOG_FATAL("Unsupported operation type");
