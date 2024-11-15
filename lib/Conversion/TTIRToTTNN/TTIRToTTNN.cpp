@@ -918,6 +918,7 @@ public:
 
     // We currently do not support custom functions in the scatter function,
     // which is a possbility in StableHLO dialect. See issue:
+    // https://github.com/tenstorrent/tt-mlir/issues/1278
     if (!match_simple_block(adaptor.getUpdateComputation())) {
       return rewriter.notifyMatchFailure(
           op, "Currently not supporting custom scatter function in TTNN "
