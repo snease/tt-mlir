@@ -565,6 +565,31 @@ static bool isValidDeviceLayout(::mlir::tt::TensorMemoryLayout layout) {
 }
 
 //===----------------------------------------------------------------------===//
+// ToLayoutOp
+// ===----------------------------------------------------------------------===//
+
+// ToLayoutOp verification
+::mlir::LogicalResult mlir::tt::ttnn::ToLayoutOp::verify() {
+  RankedTensorType inputTy = cast<RankedTensorType>(getInput().getType());
+  RankedTensorType outputTy = cast<RankedTensorType>(getResult().getType());
+
+  if (inputTy.getShape() != outputTy.getShape()) {
+    return emitOpError("Input and output tensor shapes must match");
+  }
+  mlir::tt::LayoutAttr inputLayout =
+      cast<mlir::tt::LayoutAttr>(inputTy.getEncoding());
+
+  mlir::tt::LayoutAttr outputLayout =
+      cast<mlir::tt::LayoutAttr>(outputTy.getEncoding());
+
+  if (inputLayout == outputLayout) {
+    return emitOpError("Input and output tensor layouts must not match");
+  }
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // TypecastOp
 // ===----------------------------------------------------------------------===//
 

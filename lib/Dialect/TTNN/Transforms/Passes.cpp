@@ -263,7 +263,7 @@ private:
 
     // ToDeviceOp can handle the creation of the memory config of the initial
     // device tensor
-    if (not opsToCreate.createToDeviceOp and output.isOnDevice()) {
+    if (output.isOnDevice()) {
       opsToCreate.createToMemoryConfigOp =
           (input.tensorMemoryLayout != output.tensorMemoryLayout) and
           (output.tensorMemoryLayout != ttnn::TensorMemoryLayout::None);
@@ -327,14 +327,29 @@ private:
   mlir::Value createToDeviceOpIfNeeded(ttnn::ToLayoutOp op,
                                        IRRewriter &rewriter,
                                        mlir::Value currentInput,
-                                       const OpCreationInfo &info) const {
-    if (not info.opsToCreate.createToDeviceOp) {
+                                       const OpCreationInfo &info,
+                                       bool forceCreate = false) const {
+    if (!forceCreate && !info.opsToCreate.createToDeviceOp) {
       return currentInput;
     }
+
     ttnn::MemoryConfigAttr memoryConfigAttr =
         info.output.createMemoryConfigAttr(op.getContext());
-    return this->createOp<ttnn::ToDeviceOp>(op, rewriter, currentInput,
-                                            info.device, memoryConfigAttr);
+    mlir::tt::MemorySpace memSpace =
+        utils::toTTMemorySpace(info.output.bufferType);
+    mlir::tt::TensorMemoryLayout tensorMemoryLayout =
+        utils::toTTTensorMemoryLayout(info.output.tensorMemoryLayout);
+    RankedTensorType inputType =
+        mlir::cast<RankedTensorType>(currentInput.getType());
+    mlir::tt::LayoutAttr outputLayout =
+        mlir::cast<mlir::tt::LayoutAttr>(inputType.getEncoding())
+            .withMemorySpace(rewriter.getContext(), memSpace)
+            .withMemoryLayout(rewriter.getContext(), tensorMemoryLayout);
+    RankedTensorType newResultType = RankedTensorType::get(
+        inputType.getShape(), inputType.getElementType(), outputLayout);
+    rewriter.setInsertionPoint(op);
+    return rewriter.create<ToDeviceOp>(op.getLoc(), newResultType, currentInput,
+                                       info.device, memoryConfigAttr);
   }
 
   // FromDeviceOp
@@ -343,10 +358,21 @@ private:
                                          mlir::Value currentInput,
                                          const OpCreationInfo &info,
                                          bool forceCreate = false) const {
-    if (not info.opsToCreate.createFromDeviceOp) {
+    if (!forceCreate && !info.opsToCreate.createFromDeviceOp) {
       return currentInput;
     }
-    return this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+
+    RankedTensorType inputType =
+        mlir::cast<RankedTensorType>(currentInput.getType());
+    mlir::tt::LayoutAttr inputAttr =
+        mlir::cast<mlir::tt::LayoutAttr>(inputType.getEncoding());
+    mlir::tt::LayoutAttr newResultAttr = inputAttr.withMemorySpace(
+        rewriter.getContext(), mlir::tt::MemorySpace::System);
+    RankedTensorType newResultType = RankedTensorType::get(
+        inputType.getShape(), inputType.getElementType(), newResultAttr);
+    rewriter.setInsertionPoint(op);
+    return rewriter.create<FromDeviceOp>(op.getLoc(), newResultType,
+                                         currentInput);
   }
 
   mlir::Value createToLayoutOpIfNeeded(ttnn::ToLayoutOp op,
@@ -623,8 +649,8 @@ private:
        untilize it, and then move it back to device */
     if (info.shouldUntilize() and not opsToCreate.createFromDeviceOp) {
       // Force-create a FromDeviceOp
-      currentInput =
-          this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+      currentInput = createFromDeviceOpIfNeeded(op, rewriter, currentInput,
+                                                info, /*forceCreate=*/true);
       // untilize on host
       currentInput =
           this->createToLayoutOpIfNeeded(op, rewriter, currentInput, info);
@@ -668,8 +694,8 @@ private:
     if (info.shouldTilize() and input.dataType != DataType::BFloat16 and
         not opsToCreate.createFromDeviceOp) {
       // Force-create a FromDeviceOp
-      currentInput =
-          this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+      currentInput = createFromDeviceOpIfNeeded(op, rewriter, currentInput,
+                                                info, /*forceCreate=*/true);
       // tilize on host
       currentInput =
           this->createToLayoutOpIfNeeded(op, rewriter, currentInput, info);
@@ -721,8 +747,8 @@ private:
     /* Device to device untilized typecast, need to move to host first */
     if (not output.isTilized() and not opsToCreate.createFromDeviceOp) {
       // Force-create a FromDeviceOp
-      currentInput =
-          this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+      currentInput = createFromDeviceOpIfNeeded(op, rewriter, currentInput,
+                                                info, /*forceCreate=*/true);
       // typecast on host
       currentInput =
           this->createTypecastOpIfNeeded(op, rewriter, currentInput, info);
@@ -765,8 +791,8 @@ private:
       currentInput =
           this->createTypecastOpIfNeeded(op, rewriter, currentInput, info);
       // Force-create a FromDeviceOp
-      currentInput =
-          this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+      currentInput = createFromDeviceOpIfNeeded(op, rewriter, currentInput,
+                                                info, /*forceCreate=*/true);
       // untilize on host
       currentInput =
           this->createToLayoutOpIfNeeded(op, rewriter, currentInput, info);
@@ -815,8 +841,8 @@ private:
     if (info.shouldTilize() and input.dataType != DataType::BFloat16 and
         not opsToCreate.createFromDeviceOp) {
       // Force-create a FromDeviceOp
-      currentInput =
-          this->createOp<ttnn::FromDeviceOp>(op, rewriter, currentInput);
+      currentInput = createFromDeviceOpIfNeeded(op, rewriter, currentInput,
+                                                info, /*forceCreate=*/true);
       // tilize on host
       currentInput =
           this->createToLayoutOpIfNeeded(op, rewriter, currentInput, info);
