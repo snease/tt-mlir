@@ -265,6 +265,14 @@ table PermuteOp {
   out: tt.target.TensorRef;
 }
 
+table UpsampleOp {
+  in: tt.target.TensorRef;
+  // TODO (azecevic): #1385
+  scale_factor: [int32];
+  mode: string;
+  out: tt.target.TensorRef;
+}
+
 union OpType {
   GetDeviceOp,
   ToMemoryConfigOp,
@@ -289,7 +297,8 @@ union OpType {
   DeallocateOp,
   AllGatherOp,
   ArangeOp,
-  PermuteOp
+  PermuteOp,
+  UpsampleOp
 }
 
 table Operation {

@@ -5,8 +5,6 @@
 #ifndef TTMLIR_UTILS_H
 #define TTMLIR_UTILS_H
 
-#include <cstdint>
-
 #include "mlir-c/IR.h"
 #include "mlir/CAPI/IR.h"
 #include "mlir/IR/AffineMap.h"
