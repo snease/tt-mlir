@@ -421,6 +421,8 @@ public:
                TTMetalToEmitCOpaqueRewriter<ttkernel::MulTilesOp>,
                TTMetalToEmitCOpaqueRewriter<ttkernel::ReduceInitOp>,
                TTMetalToEmitCOpaqueRewriter<ttkernel::ReduceTileOp>,
+               TTMetalToEmitCOpaqueRewriter<ttkernel::GetReadPtrOp>,
+               TTMetalToEmitCOpaqueRewriter<ttkernel::GetWritePtrOp>,
                TTMetalToEmitCOpaqueRewriter<ttkernel::GetNocAddrOp>,
                TTMetalToEmitCOpaqueRewriter<ttkernel::NocAsyncReadOp>,
                TTMetalToEmitCOpaqueRewriter<
