@@ -28,4 +28,12 @@ def TTNNLayout : Pass<"ttnn-layout", "::mlir::ModuleOp"> {
   }];
 }
 
+def TTNNWorkarounds : Pass<"ttnn-workaround", "::mlir::ModuleOp"> {
+  let summary = "Apply workarounds to the IR.";
+  let description = [{
+    This pass applies necessary TTNN workarounds to the IR in order to create
+    a valid TTNN flatbuffer.
+  }];
+}
+
 #endif

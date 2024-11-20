@@ -325,7 +325,7 @@ def TTNN_Expm1Op: TTNN_ElementwiseUnaryOp<"expm1"> {
   }];
 }
 
-class TTIR_ElementwiseUnaryWithFloatParameterOp<string mnemonic, list<Trait> traits = []> :
+class TTNN_ElementwiseUnaryWithFloatParameterOp<string mnemonic, list<Trait> traits = []> :
     TTNN_ElementwiseUnaryOp<mnemonic, traits> {
     let summary = "Eltwise unary op with the float parameter.";
     let description = [{
@@ -345,7 +345,7 @@ class TTIR_ElementwiseUnaryWithFloatParameterOp<string mnemonic, list<Trait> tra
     ];
 }
 
-def TTIR_LeakyReluOp : TTIR_ElementwiseUnaryWithFloatParameterOp<"leaky_relu"> {
+def TTNN_LeakyReluOp : TTNN_ElementwiseUnaryWithFloatParameterOp<"leaky_relu"> {
     let summary = "Eltwise leaky relu operation.";
     let description = [{
       The Leaky ReLU (Rectified Linear Unit) operation computes an element-wise
