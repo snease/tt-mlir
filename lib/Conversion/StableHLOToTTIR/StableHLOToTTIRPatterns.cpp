@@ -2009,7 +2009,6 @@ void addGatherOpConversionPattern(MLIRContext *ctx, RewritePatternSet &patterns,
   patterns.add<StableHLOToTTIRGatherOpConversionPattern>(typeConverter, ctx);
 }
 
-<<<<<<< HEAD
 void addIotaOpConversionPattern(MLIRContext *ctx, RewritePatternSet &patterns,
                                 TypeConverter &typeConverter) {
   patterns.add<StableHLOToTTIROpIotaOpConversionPattern<stablehlo::IotaOp>>(
@@ -2029,12 +2028,12 @@ void addReturnOpConversionPatterns(MLIRContext *ctx,
                                    RewritePatternSet &patterns,
                                    TypeConverter &typeConverter) {
   patterns.add<StableHLOToTTIRReturnOpConversionPattern>(typeConverter, ctx);
-=======
+}
+
 void addReverseOpConversionPattern(MLIRContext *ctx,
                                    RewritePatternSet &patterns,
                                    TypeConverter &typeConverter) {
   patterns.add<StableHLOToTTIROpReverseOpConversionPattern>(typeConverter, ctx);
->>>>>>> 012512be (Added TTIR Reverse op and stablehlo -> ttir conversion)
 }
 
 } // namespace
@@ -2062,13 +2061,10 @@ void populateStableHLOToTTIRPatterns(MLIRContext *ctx,
   addSliceOpConversionPattern(ctx, patterns, typeConverter);
   addClampOpConversionPattern(ctx, patterns, typeConverter);
   addGatherOpConversionPattern(ctx, patterns, typeConverter);
-<<<<<<< HEAD
   addIotaOpConversionPattern(ctx, patterns, typeConverter);
   addScatterOpConversionPatterns(ctx, patterns, typeConverter);
   addReturnOpConversionPatterns(ctx, patterns, typeConverter);
-=======
   addReverseOpConversionPattern(ctx, patterns, typeConverter);
->>>>>>> 012512be (Added TTIR Reverse op and stablehlo -> ttir conversion)
 }
 
 } // namespace mlir::tt
