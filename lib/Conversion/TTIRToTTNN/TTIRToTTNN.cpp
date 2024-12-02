@@ -82,8 +82,8 @@ public:
     // If the tensor is not going to device, we can create the op without
     // device-specific attributes
     //
-    ttnn::TensorMemoryLayout memLayout = layoutAttr.getMemLayout();
-    if (memLayout == ttnn::TensorMemoryLayout::None) {
+    ttnn::TensorMemoryLayoutAttr memLayout = layoutAttr.getMemLayout();
+    if (!memLayout) {
       rewriter.replaceOpWithNewOp<ttnn::EmptyOp>(
           op, this->getTypeConverter()->convertType(op.getType()), nullptr,
           shapeAttr, dTypeAttr, tensorLayoutAttr, nullptr);
@@ -98,12 +98,10 @@ public:
     auto device = getOrInsertDevice(rewriter, op);
     llvm::SmallVector<int64_t> shardShape = layoutAttr.getShardShape();
     ttnn::MemoryConfigAttr memoryConfigAttr = ttnn::MemoryConfigAttr::get(
-        op.getContext(),
-        ttnn::TensorMemoryLayoutAttr::get(op.getContext(), memLayout),
-        ttnn::BufferTypeAttr::get(op.getContext(), bufferType),
+        op.getContext(), ttnn::BufferTypeAttr::get(op.getContext(), bufferType),
         ttnn::ShardSpecAttr::get(
-            op.getContext(),
-            ttnn::ShapeAttr::get(op.getContext(), shardShape)));
+            op.getContext(), ttnn::ShapeAttr::get(op.getContext(), shardShape)),
+        memLayout);
 
     rewriter.replaceOpWithNewOp<ttnn::EmptyOp>(
         op, this->getTypeConverter()->convertType(op.getType()), device,
@@ -178,17 +176,13 @@ public:
     llvm::SmallVector<int64_t> outputShardShape =
         outputLayoutAttr.getShardShape();
 
-    // Determine output memory config attr
-    ttnn::TensorMemoryLayout outputTensorMemoryLayout =
-        outputLayoutAttr.getMemLayout();
     ttnn::MemoryConfigAttr outputMemConfigAttr = ttnn::MemoryConfigAttr::get(
         rewriter.getContext(),
-        ttnn::TensorMemoryLayoutAttr::get(rewriter.getContext(),
-                                          outputTensorMemoryLayout),
         ttnn::BufferTypeAttr::get(rewriter.getContext(), outputBufferType),
         ttnn::ShardSpecAttr::get(
             op.getContext(),
-            ttnn::ShapeAttr::get(rewriter.getContext(), outputShardShape)));
+            ttnn::ShapeAttr::get(rewriter.getContext(), outputShardShape)),
+        outputLayoutAttr.getMemLayout());
 
     rewriter.replaceOpWithNewOp<ttnn::ToLayoutOp>(
         op, this->getTypeConverter()->convertType(result), adaptor.getInput(),
@@ -939,11 +933,10 @@ public:
 
     ttnn::MemoryConfigAttr memConfigAttr =
         rewriter.getAttr<ttnn::MemoryConfigAttr>(
-            rewriter.getAttr<ttnn::TensorMemoryLayoutAttr>(
-                layoutAttr.getMemLayout()),
             rewriter.getAttr<ttnn::BufferTypeAttr>(layoutAttr.getBufferType()),
             rewriter.getAttr<ttnn::ShardSpecAttr>(
-                rewriter.getAttr<ttnn::ShapeAttr>(layoutAttr.getShardShape())));
+                rewriter.getAttr<ttnn::ShapeAttr>(layoutAttr.getShardShape())),
+            layoutAttr.getMemLayout());
 
     rewriter.replaceOpWithNewOp<ttnn::ArangeOp>(
         op, outputType, adaptor.getStart(), adaptor.getEnd(), adaptor.getStep(),

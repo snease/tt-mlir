@@ -81,9 +81,9 @@ def TTNN_MemoryConfigAttr : TTNN_Attr<"MemoryConfig", "memory_config"> {
     TTNN memory config attribute
   }];
 
-  let parameters = (ins AttrParameter<"TensorMemoryLayoutAttr", "">:$tensorMemoryLayout,
-                        AttrParameter<"BufferTypeAttr", "">:$bufferType,
-                        AttrParameter<"ShardSpecAttr", "">:$shardSpec);
+  let parameters = (ins AttrParameter<"BufferTypeAttr", "">:$bufferType,
+                        AttrParameter<"ShardSpecAttr", "">:$shardSpec,
+                        OptionalParameter<"TensorMemoryLayoutAttr">:$tensorMemoryLayout);
 
   let assemblyFormat = "`<` params `>`";
 

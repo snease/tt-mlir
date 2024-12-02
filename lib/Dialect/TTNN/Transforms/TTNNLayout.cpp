@@ -154,7 +154,7 @@ public:
 static std::optional<Value>
 createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
                  BufferType desiredBufferType,
-                 TensorMemoryLayout desiredMemLayout, bool tiled) {
+                 TensorMemoryLayoutAttr desiredMemLayoutAttr, bool tiled) {
 
   // Get type
   RankedTensorType ty = mlir::cast<RankedTensorType>(input.getType());
@@ -171,24 +171,21 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
   // Get mem layout. If the tensor is on host layout is null
   TensorMemoryLayoutAttr currMemLayout = ttnnLayoutAttr.getMemLayout();
 
-  bool isNewMemoryLayout =
-
-      // Get element type that should be used in the new ttnn layout
-      Type desiredElementType =
-          tiled ? rewriter.getType<TileType>(ty.getElementType())
-                : ty.getElementType();
+  // Get element type that should be used in the new ttnn layout
+  Type desiredElementType =
+      tiled ? rewriter.getType<TileType>(ty.getElementType())
+            : ty.getElementType();
 
   // If the current buffer type, element type and memory layout are the same as
   // the desired ones, we don't need to do anything
   if (currBufferType == desiredBufferType &&
-      currElementType == desiredElementType && isNewMemoryLayout) {
+      currElementType == desiredElementType &&
+      currMemLayout == desiredMemLayoutAttr) {
     return std::nullopt;
   }
 
   // Create a new ttnn layout with the desired buffer type, element type and
   // memory layout
-  TensorMemoryLayoutAttr desiredMemLayoutAttr =
-      TensorMemoryLayoutAttr::get(rewriter.getContext(), desiredMemLayout);
   TTNNLayoutAttr desiredLayout = rewriter.getAttr<TTNNLayoutAttr>(
       ty.getShape(), desiredElementType, desiredBufferType,
       ttnnLayoutAttr.getGrid(), desiredMemLayoutAttr, g_defaultCollapseDims);
@@ -266,19 +263,20 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
       utils::toTTTensorMemoryLayout(g_defaultMemoryLayout);
   tt::TensorMemoryLayout desiredMemoryLayout = getLegalTensorMemoryLayout(
       operandConstraint, desiredMemorySpace, ttMemoryLayout);
-  TensorMemoryLayout ttnnMemoryLayout;
-  if (desiredMemoryLayout == tt::TensorMemoryLayout::None) {
-    return std::nullopt;
+  TensorMemoryLayoutAttr ttnnMemoryLayoutAttr;
+  if (desiredMemoryLayout != tt::TensorMemoryLayout::None) {
+    TensorMemoryLayout ttnnMemoryLayout =
+        utils::toTTNNTensorMemoryLayout(desiredMemoryLayout);
+    ttnnMemoryLayoutAttr =
+        TensorMemoryLayoutAttr::get(rewriter.getContext(), ttnnMemoryLayout);
   }
-  TensorMemoryLayout ttnnMemoryLayout =
-      utils::toTTNNTensorMemoryLayout(desiredMemoryLayout);
 
   // Check if the tensor should be tiled
   bool tiled =
       !bitEnumContainsAny(operandConstraint, OperandConstraint::Scalar);
 
   return createToLayoutOp(rewriter, loc, input, desiredBufferType,
-                          ttnnMemoryLayout, tiled);
+                          ttnnMemoryLayoutAttr, tiled);
 }
 
 // Updates the layout of the operands of a TTIR ops which have DPS operands.
@@ -361,7 +359,7 @@ public:
           appendInputSuffix(op.getLoc(), operand.getOperandNumber());
       std::optional<Value> layout = createToLayoutOp(
           rewriter, newLoc, operand.get(), BufferType::SystemMemory,
-          TensorMemoryLayout::None, false /* tiled */);
+          {} /* tensorMemoryLayoutAttr */, false /* tiled */);
       if (layout.has_value()) {
         rewriter.modifyOpInPlace(
             op, [&]() { op.setOperand(operand.getOperandNumber(), *layout); });

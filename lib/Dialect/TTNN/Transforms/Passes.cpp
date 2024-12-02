@@ -135,10 +135,10 @@ private:
 
     ttnn::MemoryConfigAttr createMemoryConfigAttr(MLIRContext *context) const {
       return ttnn::MemoryConfigAttr::get(
-          context, tensorMemoryLayout,
-          ttnn::BufferTypeAttr::get(context, bufferType),
+          context, ttnn::BufferTypeAttr::get(context, bufferType),
           ttnn::ShardSpecAttr::get(context,
-                                   ttnn::ShapeAttr::get(context, shardShape)));
+                                   ttnn::ShapeAttr::get(context, shardShape)),
+          tensorMemoryLayout);
     }
 
     bool isOnHost() const {

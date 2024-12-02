@@ -284,12 +284,13 @@ public:
               emptyOp.setLayout(ttnn::Layout::RowMajor);
             }
             emptyOp.setMemoryConfigAttr(ttnn::MemoryConfigAttr::get(
-                op->getContext(), tensorMemoryLayoutAttr,
+                op->getContext(),
                 BufferTypeAttr::get(op->getContext(), bufferType),
                 ShardSpecAttr::get(
                     op->getContext(),
                     ShapeAttr::get(op->getContext(),
-                                   layoutAttr.getMemref().getShape()))));
+                                   layoutAttr.getMemref().getShape())),
+                tensorMemoryLayoutAttr));
           }
           // TODO(mtopalovic): Temp workaround for generic ToLayoutOp. Allign
           // MemoryConfigAttr with layout attribute of its output tensor. This
@@ -304,12 +305,13 @@ public:
             //
             ttnn::ToLayoutOp toLayoutOp = llvm::cast<ttnn::ToLayoutOp>(op);
             toLayoutOp.setMemoryConfigAttr(ttnn::MemoryConfigAttr::get(
-                op->getContext(), tensorMemoryLayoutAttr,
+                op->getContext(),
                 ttnn::BufferTypeAttr::get(op->getContext(), bufferType),
                 ttnn::ShardSpecAttr::get(
                     op->getContext(),
                     ttnn::ShapeAttr::get(op->getContext(),
-                                         layoutAttr.getMemref().getShape()))));
+                                         layoutAttr.getMemref().getShape())),
+                tensorMemoryLayoutAttr));
           }
         }
       });
@@ -451,11 +453,12 @@ private:
       llvm::SmallVector<int64_t> shardShape =
           consumerOpOutputLayout.getShardShape();
       MemoryConfigAttr outputMemConfigAttr = MemoryConfigAttr::get(
-          consumerOp->getContext(), outputTensorMemoryLayoutAttr,
+          consumerOp->getContext(),
           BufferTypeAttr::get(consumerOp->getContext(), outputBufferType),
           ShardSpecAttr::get(
               consumerOp->getContext(),
-              ShapeAttr::get(consumerOp->getContext(), shardShape)));
+              ShapeAttr::get(consumerOp->getContext(), shardShape)),
+          outputTensorMemoryLayoutAttr);
 
       // If producerOp is a toLayoutOp, adjust its output layout(update
       // inplace) to reflect consumerOp's output layout. If producerOp is not a
