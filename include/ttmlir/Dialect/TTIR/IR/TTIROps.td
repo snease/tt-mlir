@@ -177,7 +177,7 @@ def ThreeOperands : ParamNativeOpTrait<"NOperands", "3">;
 def FourOperands : ParamNativeOpTrait<"NOperands", "4">;
 
 class TTIR_ElementwiseOp<string mnemonic, list<Trait> traits = []> :
-    TTIR_DPSOp<mnemonic, !listconcat(traits, [AttrSizedOperandSegments, TTIR_Broadcastable])> {
+    TTIR_DPSOp<mnemonic, !listconcat(traits, [AttrSizedOperandSegments, TTIR_Broadcastable, Pure])> {
 
     let description = [{
       Base class for elementwise operations. Elementwise operations can take inputs with different shape,
@@ -228,7 +228,7 @@ class TTIR_ElementwiseUnaryOp<string mnemonic, list<Trait> traits = []> :
     ];
 }
 
-def TTIR_AbsOp: TTIR_ElementwiseUnaryOp<"abs"> {
+def TTIR_AbsOp: TTIR_ElementwiseUnaryOp<"abs", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise absolute op.";
     let description = [{
       Eltwise absolute operation.
@@ -242,7 +242,7 @@ def TTIR_CbrtOp: TTIR_ElementwiseUnaryOp<"cbrt"> {
     }];
 }
 
-def TTIR_CeilOp: TTIR_ElementwiseUnaryOp<"ceil"> {
+def TTIR_CeilOp: TTIR_ElementwiseUnaryOp<"ceil", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise ceil op.";
     let description = [{
       Eltwise ceil operation.
@@ -256,7 +256,7 @@ def TTIR_CosOp: TTIR_ElementwiseUnaryOp<"cos"> {
     }];
 }
 
-def TTIR_FloorOp: TTIR_ElementwiseUnaryOp<"floor"> {
+def TTIR_FloorOp: TTIR_ElementwiseUnaryOp<"floor", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise floor op.";
     let description = [{
       Eltwise floor operation.
@@ -270,21 +270,21 @@ def TTIR_GeluOp: TTIR_ElementwiseUnaryOp<"gelu"> {
   }];
 }
 
-def TTIR_IsFiniteOp: TTIR_ElementwiseUnaryOp<"isfinite"> {
+def TTIR_IsFiniteOp: TTIR_ElementwiseUnaryOp<"isfinite", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise isfinite op.";
     let description = [{
       Eltwise isfinite operation.
     }];
 }
 
-def TTIR_LogicalNotOp: TTIR_ElementwiseUnaryOp<"logical_not"> {
+def TTIR_LogicalNotOp: TTIR_ElementwiseUnaryOp<"logical_not", [ConditionalDPSInvolution]> {
     let summary = "Eltwise logical not op.";
     let description = [{
       Eltwise logical not operation.
     }];
 }
 
-def TTIR_NegOp: TTIR_ElementwiseUnaryOp<"neg"> {
+def TTIR_NegOp: TTIR_ElementwiseUnaryOp<"neg", [ConditionalDPSInvolution]> {
     let summary = "Eltwise negate op.";
     let description = [{
       Eltwise negate operation.
@@ -305,20 +305,21 @@ def TTIR_TanhOp: TTIR_ElementwiseUnaryOp<"tanh"> {
     }];
 }
 
-def TTIR_ReciprocalOp : TTIR_ElementwiseUnaryOp<"reciprocal"> {
+def TTIR_ReciprocalOp : TTIR_ElementwiseUnaryOp<"reciprocal", [ConditionalDPSInvolution]> {
     let summary = "Eltwise reciprocal.";
     let description = [{
       Eltwise reciprocal operation.
     }];
 }
 
-def TTIR_ReluOp : TTIR_ElementwiseUnaryOp<"relu"> {
+def TTIR_ReluOp : TTIR_ElementwiseUnaryOp<"relu", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise ReLU.";
     let description = [{
       Eltwise ReLU operation.
     }];
 }
 
+// TODO (azecevic): CHECK THIS OP
 def TTIR_RsqrtOp : TTIR_ElementwiseUnaryOp<"rsqrt"> {
     let summary = "Eltwise reciprocal square root.";
     let description = [{
@@ -333,7 +334,7 @@ def TTIR_SigmoidOp: TTIR_ElementwiseUnaryOp<"sigmoid"> {
     }];
 }
 
-def TTIR_SignOp: TTIR_ElementwiseUnaryOp<"sign"> {
+def TTIR_SignOp: TTIR_ElementwiseUnaryOp<"sign", [ConditionalDPSIdempotence]> {
     let summary = "Eltwise sign operation.";
     let description = [{
       Returns the sign of the `operand` element-wise and produces a `result`
@@ -359,6 +360,7 @@ def TTIR_SqrtOp : TTIR_ElementwiseUnaryOp<"sqrt"> {
     }];
 }
 
+// TODO (azecevic): FOLDABLE
 def TTIR_TypecastOp: TTIR_ElementwiseUnaryOp<"typecast"> {
     let summary = "Eltwise cast op.";
     let description = [{
@@ -683,6 +685,7 @@ def TTIR_SoftmaxOp : TTIR_DPSOp<"softmax"> {
     let hasVerifier = 1;
 }
 
+// TODO (azecevic): FOLDABLE
 def TTIR_TransposeOp : TTIR_DPSOp<"transpose"> {
     let summary = "Transpose op.";
     let description = [{
