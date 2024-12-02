@@ -121,27 +121,33 @@ def TTNN_TTNNLayoutAttr: TTNN_Attr<"TTNNLayout", "ttnn_layout"> {
   let parameters = (ins AttrParameter<"AffineMap", "An affine map that defines how the logical tensor dimensions map to a grid shape.">:$linear,
                         AttrParameter<"GridAttr", "The grid shape that this tensor is divided onto.">:$grid,
                         AttrParameter<"MemRefType", "A memref that describes the physical footprint allocation of the shard. It must also have a shape with rank equal to grid.">:$memref,
-                        DefaultValuedParameter<"TensorMemoryLayout", "TensorMemoryLayout::None", "The layout of the tensor in memory.">:$mem_layout);
+                        OptionalParameter<"TensorMemoryLayoutAttr", "TTNN tensor memory layout">:$mem_layout);
   let assemblyFormat = "`<` $linear`,` $grid`,` $memref (`,` $mem_layout^)? `>`";
   let extraClassDeclaration = [{
-    static TTNNLayoutAttr get(::mlir::MLIRContext *context,
+    static TTNNLayoutAttr getLayoutForDevice(::mlir::MLIRContext *context,
                         ArrayRef<int64_t> tensorShape,
                         Type elementType,
                         BufferType bufferType,
                         GridAttr grid,
                         TensorMemoryLayout memoryLayout,
                         ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
-      uint64_t getShardSizeInBytes() const;
-      BufferType getBufferType() const;
-      TTNNLayoutAttr withGrid(::mlir::MLIRContext *context, ArrayRef<int64_t> tensorShape, GridAttr grid, ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
-      TTNNLayoutAttr withGrid(::mlir::MLIRContext *context,
-                          RankedTensorType ty,
-                          GridAttr grid,
-                          ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
-      TTNNLayoutAttr withElementType(::mlir::MLIRContext *context, Type elementType);
-      TTNNLayoutAttr withBufferType(::mlir::MLIRContext *context, BufferType bufferType);
-      TTNNLayoutAttr withMemoryLayout(::mlir::MLIRContext *context, TensorMemoryLayout memLayout);
-      TTNNLayoutAttr withShardShape(::mlir::MLIRContext *context, llvm::SmallVector<int64_t> shardShape);
+    static TTNNLayoutAttr getLayoutForHost(::mlir::MLIRContext *context,
+                        ArrayRef<int64_t> tensorShape,
+                        Type elementType,
+                        BufferType bufferType,
+                        GridAttr grid,
+                        ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
+    uint64_t getShardSizeInBytes() const;
+    BufferType getBufferType() const;
+    TTNNLayoutAttr withGrid(::mlir::MLIRContext *context, ArrayRef<int64_t> tensorShape, GridAttr grid, ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
+    TTNNLayoutAttr withGrid(::mlir::MLIRContext *context,
+                        RankedTensorType ty,
+                        GridAttr grid,
+                        ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
+    TTNNLayoutAttr withElementType(::mlir::MLIRContext *context, Type elementType);
+    TTNNLayoutAttr withBufferType(::mlir::MLIRContext *context, BufferType bufferType);
+    TTNNLayoutAttr withMemoryLayout(::mlir::MLIRContext *context, TensorMemoryLayout memLayout);
+    TTNNLayoutAttr withShardShape(::mlir::MLIRContext *context, llvm::SmallVector<int64_t> shardShape);
 
       bool isSystemBufferType() const { return ::mlir::tt::ttnn::isSystemBufferType(getBufferType()); }
       bool isDeviceBufferType() const { return ::mlir::tt::ttnn::isDeviceBufferType(getBufferType()); }
