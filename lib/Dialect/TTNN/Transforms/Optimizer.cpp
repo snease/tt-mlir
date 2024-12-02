@@ -270,7 +270,8 @@ public:
           //
           if (isa<mlir::DestinationStyleOpInterface>(op)) {
             BufferType bufferType = layoutAttr.getBufferType();
-            TensorMemoryLayout tensorMemoryLayout = layoutAttr.getMemLayout();
+            TensorMemoryLayoutAttr tensorMemoryLayoutAttr =
+                layoutAttr.getMemLayout();
 
             op->getOperands().back().setType(newTensorType);
             EmptyOp emptyOp =
@@ -283,9 +284,7 @@ public:
               emptyOp.setLayout(ttnn::Layout::RowMajor);
             }
             emptyOp.setMemoryConfigAttr(ttnn::MemoryConfigAttr::get(
-                op->getContext(),
-                TensorMemoryLayoutAttr::get(op->getContext(),
-                                            tensorMemoryLayout),
+                op->getContext(), tensorMemoryLayoutAttr,
                 BufferTypeAttr::get(op->getContext(), bufferType),
                 ShardSpecAttr::get(
                     op->getContext(),
@@ -299,14 +298,13 @@ public:
           //
           else if (isa<ttnn::ToLayoutOp>(op)) {
             BufferType bufferType = layoutAttr.getBufferType();
-            TensorMemoryLayout tensorMemoryLayout = layoutAttr.getMemLayout();
+            TensorMemoryLayoutAttr tensorMemoryLayoutAttr =
+                layoutAttr.getMemLayout();
             // Update the device op with the new tensor type.
             //
             ttnn::ToLayoutOp toLayoutOp = llvm::cast<ttnn::ToLayoutOp>(op);
             toLayoutOp.setMemoryConfigAttr(ttnn::MemoryConfigAttr::get(
-                op->getContext(),
-                ttnn::TensorMemoryLayoutAttr::get(op->getContext(),
-                                                  tensorMemoryLayout),
+                op->getContext(), tensorMemoryLayoutAttr,
                 ttnn::BufferTypeAttr::get(op->getContext(), bufferType),
                 ttnn::ShardSpecAttr::get(
                     op->getContext(),
@@ -447,15 +445,13 @@ private:
                         consumerOpOutputLayout.getGrid()));
 
       BufferType outputBufferType = consumerOpOutputLayout.getBufferType();
-      TensorMemoryLayout outputTensorMemoryLayout =
+      TensorMemoryLayoutAttr outputTensorMemoryLayoutAttr =
           consumerOpOutputLayout.getMemLayout();
 
       llvm::SmallVector<int64_t> shardShape =
           consumerOpOutputLayout.getShardShape();
       MemoryConfigAttr outputMemConfigAttr = MemoryConfigAttr::get(
-          consumerOp->getContext(),
-          TensorMemoryLayoutAttr::get(consumerOp->getContext(),
-                                      outputTensorMemoryLayout),
+          consumerOp->getContext(), outputTensorMemoryLayoutAttr,
           BufferTypeAttr::get(consumerOp->getContext(), outputBufferType),
           ShardSpecAttr::get(
               consumerOp->getContext(),

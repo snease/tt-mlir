@@ -219,8 +219,9 @@ void DFShardingPolicy::pickOpShardLayouts(ShardSolver &shardSolver,
       } else if (accMaxCoreUsage[op][layoutIterator.index()] == maxCoreUsage) {
         // If we have a tie, prefer layout that is not BlockSharded.
         //
-        if (layoutIterator->getMemLayout() !=
-            ttnn::TensorMemoryLayout::BlockSharded) {
+        if (layoutIterator->getMemLayout() &&
+            layoutIterator->getMemLayout().getValue() !=
+                ttnn::TensorMemoryLayout::BlockSharded) {
           selectedLayout = layoutIterator.get();
         }
       }

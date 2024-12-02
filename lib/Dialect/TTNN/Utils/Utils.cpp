@@ -38,11 +38,9 @@ mlir::tt::ttnn::TensorMemoryLayout toTTNNTensorMemoryLayout(
     return ttnn::TensorMemoryLayout::BlockSharded;
   case ::mlir::tt::TensorMemoryLayout::SingleBank:
     return ttnn::TensorMemoryLayout::SingleBank;
-  case ::mlir::tt::TensorMemoryLayout::None:
-    return ttnn::TensorMemoryLayout::None;
+  default:
+    llvm_unreachable("Unknown TensorMemoryLayout");
   }
-
-  llvm_unreachable("Unknown TensorMemoryLayout");
 }
 
 mlir::tt::TensorMemoryLayout toTTTensorMemoryLayout(
@@ -59,8 +57,6 @@ mlir::tt::TensorMemoryLayout toTTTensorMemoryLayout(
     return ::mlir::tt::TensorMemoryLayout::BlockSharded;
   case ttnn::TensorMemoryLayout::SingleBank:
     return ::mlir::tt::TensorMemoryLayout::SingleBank;
-  case ttnn::TensorMemoryLayout::None:
-    return ::mlir::tt::TensorMemoryLayout::None;
   }
 }
 

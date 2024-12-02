@@ -75,7 +75,7 @@ public:
 
       TTNNLayoutAttr newLayout = TTNNLayoutAttr::get(
           ctx, type.getShape(), type.getElementType(), g_defaultMemorySpaceHost,
-          tensorGrid, TensorMemoryLayout::None, collapseDimsRef);
+          tensorGrid, {} /* memLayoutAttr */, collapseDimsRef);
       return RankedTensorType::get(type.getShape(), type.getElementType(),
                                    newLayout);
     });
@@ -160,36 +160,38 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
   RankedTensorType ty = mlir::cast<RankedTensorType>(input.getType());
 
   // Get ttnn layout from the type
-  TTNNLayoutAttr tensorConfig = mlir::cast<TTNNLayoutAttr>(ty.getEncoding());
+  TTNNLayoutAttr ttnnLayoutAttr = mlir::cast<TTNNLayoutAttr>(ty.getEncoding());
 
   // Get buffer type (i.e DRAM/L1 etc)
-  BufferType currBufferType = tensorConfig.getBufferType();
+  BufferType currBufferType = ttnnLayoutAttr.getBufferType();
 
   // Get the current element type (i.e bf16/TileType etc)
-  Type currElementType = tensorConfig.getElementType();
+  Type currElementType = ttnnLayoutAttr.getElementType();
 
-  // Get the mem layout attribute (i.e interleaved/sharded or null in case of
-  // System)
-  TensorMemoryLayout currMemLayout = tensorConfig.getMemLayout();
+  // Get mem layout. If the tensor is on host layout is null
+  TensorMemoryLayoutAttr currMemLayout = ttnnLayoutAttr.getMemLayout();
 
-  // Get element type that should be used in the new ttnn layout
-  Type desiredElementType =
-      tiled ? rewriter.getType<TileType>(ty.getElementType())
-            : ty.getElementType();
+  bool isNewMemoryLayout =
+
+      // Get element type that should be used in the new ttnn layout
+      Type desiredElementType =
+          tiled ? rewriter.getType<TileType>(ty.getElementType())
+                : ty.getElementType();
 
   // If the current buffer type, element type and memory layout are the same as
   // the desired ones, we don't need to do anything
   if (currBufferType == desiredBufferType &&
-      currElementType == desiredElementType &&
-      currMemLayout == desiredMemLayout) {
+      currElementType == desiredElementType && isNewMemoryLayout) {
     return std::nullopt;
   }
 
   // Create a new ttnn layout with the desired buffer type, element type and
   // memory layout
+  TensorMemoryLayoutAttr desiredMemLayoutAttr =
+      TensorMemoryLayoutAttr::get(rewriter.getContext(), desiredMemLayout);
   TTNNLayoutAttr desiredLayout = rewriter.getAttr<TTNNLayoutAttr>(
       ty.getShape(), desiredElementType, desiredBufferType,
-      tensorConfig.getGrid(), desiredMemLayout, g_defaultCollapseDims);
+      ttnnLayoutAttr.getGrid(), desiredMemLayoutAttr, g_defaultCollapseDims);
 
   // If the input tensor is a constant or empty tensor, we can replace it with a
   // new tensor with the desired layout
@@ -224,7 +226,7 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
   if (existingArange) {
     TTNNLayoutAttr arangeLayout = rewriter.getAttr<TTNNLayoutAttr>(
         ty.getShape(), ty.getElementType(), desiredBufferType,
-        tensorConfig.getGrid(), desiredMemLayout, g_defaultCollapseDims);
+        ttnnLayoutAttr.getGrid(), desiredMemLayoutAttr, g_defaultCollapseDims);
     input =
         rewriter
             .replaceOpWithNewOp<ttir::ArangeOp>(
@@ -264,6 +266,10 @@ createToLayoutOp(PatternRewriter &rewriter, Location loc, Value input,
       utils::toTTTensorMemoryLayout(g_defaultMemoryLayout);
   tt::TensorMemoryLayout desiredMemoryLayout = getLegalTensorMemoryLayout(
       operandConstraint, desiredMemorySpace, ttMemoryLayout);
+  TensorMemoryLayout ttnnMemoryLayout;
+  if (desiredMemoryLayout == tt::TensorMemoryLayout::None) {
+    return std::nullopt;
+  }
   TensorMemoryLayout ttnnMemoryLayout =
       utils::toTTNNTensorMemoryLayout(desiredMemoryLayout);
 
