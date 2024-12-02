@@ -205,11 +205,11 @@ namespace mlir::tt::ttnn {
   //
   if (getMemoryConfig().has_value()) {
     ttnn::BufferType bufferType = layoutAttr.getBufferType();
-    ttnn::TensorMemoryLayout tensorMemoryLayout =
-        layoutAttr.getMemLayout().getValue();
+    ttnn::TensorMemoryLayoutAttr tensorMemoryLayoutAttr =
+        layoutAttr.getMemLayout();
     assert(bufferType == getMemoryConfig()->getBufferType().getValue());
-    assert(tensorMemoryLayout ==
-           getMemoryConfig()->getTensorMemoryLayout().getValue());
+    assert(tensorMemoryLayoutAttr ==
+           getMemoryConfig()->getTensorMemoryLayout());
   }
   //
   // ==============================

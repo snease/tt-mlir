@@ -68,15 +68,15 @@ MlirAttribute ttmlirTTNNMeshShapeAttrGet(MlirContext ctx, int64_t y,
   return wrap(MeshShapeAttr::get(unwrap(ctx), y, x));
 }
 
-MlirAttribute ttmlirTTNNTTNNLayoutAttrGet(MlirContext ctx, MlirAffineMap linear,
-                                          MlirAttribute grid, MlirType memref,
-                                          std::optional<unsigned> memLayout) {
+MlirAttribute ttmlirTTNNTTNNLayoutAttrGet(
+    MlirContext ctx, MlirAffineMap linear, MlirAttribute grid, MlirType memref,
+    unsigned memLayout = std::numeric_limits<unsigned>::max()) {
   mlir::AffineMap affineMap = mlir::AffineMap::getFromOpaquePointer(linear.ptr);
-  TensorMemoryLayoutAttr memLayoutAttr =
-      memLayout.has_value()
-          ? TensorMemoryLayoutAttr::get(
-                unwrap(ctx), static_cast<TensorMemoryLayout>(memLayout.value()))
-          : TensorMemoryLayoutAttr();
+  TensorMemoryLayoutAttr memLayoutAttr;
+  if (memLayout != std::numeric_limits<unsigned>::max()) {
+    memLayoutAttr = TensorMemoryLayoutAttr::get(
+        unwrap(ctx), static_cast<TensorMemoryLayout>(memLayout));
+  }
   return wrap(TTNNLayoutAttr::get(
       unwrap(ctx), affineMap, mlir::cast<GridAttr>(unwrap(grid)),
       mlir::cast<MemRefType>(unwrap(memref)), memLayoutAttr));

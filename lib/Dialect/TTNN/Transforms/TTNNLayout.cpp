@@ -75,7 +75,7 @@ public:
 
       TTNNLayoutAttr newLayout = TTNNLayoutAttr::get(
           ctx, type.getShape(), type.getElementType(), g_defaultMemorySpaceHost,
-          tensorGrid, {} /* memLayoutAttr */, collapseDimsRef);
+          tensorGrid, nullptr /* memLayoutAttr */, collapseDimsRef);
       return RankedTensorType::get(type.getShape(), type.getElementType(),
                                    newLayout);
     });
@@ -359,7 +359,7 @@ public:
           appendInputSuffix(op.getLoc(), operand.getOperandNumber());
       std::optional<Value> layout = createToLayoutOp(
           rewriter, newLoc, operand.get(), BufferType::SystemMemory,
-          {} /* tensorMemoryLayoutAttr */, false /* tiled */);
+          nullptr /* tensorMemoryLayoutAttr */, false /* tiled */);
       if (layout.has_value()) {
         rewriter.modifyOpInPlace(
             op, [&]() { op.setOperand(operand.getOperandNumber(), *layout); });

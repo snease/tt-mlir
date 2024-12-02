@@ -129,7 +129,7 @@ def TTNN_TTNNLayoutAttr: TTNN_Attr<"TTNNLayout", "ttnn_layout"> {
                         Type elementType,
                         BufferType bufferType,
                         GridAttr grid,
-                        TensorMemoryLayoutAttr memoryLayout = {},
+                        TensorMemoryLayoutAttr memoryLayoutAttr = nullptr,
                         ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
 
     TTNNLayoutAttr withGrid(::mlir::MLIRContext *context, ArrayRef<int64_t> tensorShape, GridAttr grid, ArrayRef<std::pair<std::int64_t, std::int64_t>> collapseIntervals = {{0, -1}});
