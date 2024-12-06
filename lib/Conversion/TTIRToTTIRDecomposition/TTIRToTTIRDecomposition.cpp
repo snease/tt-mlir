@@ -4,6 +4,7 @@
 
 #include "ttmlir/Conversion/TTIRToTTIRDecomposition/TTIRToTTIRDecomposition.h"
 
+#include "ttmlir/Dialect/TT/IR/TTOpsTypes.h"
 #include "ttmlir/Dialect/TTIR/IR/TTIROps.h"
 
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
@@ -15,8 +16,11 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "ttmlir/Utils.h"
 
 #include <algorithm>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/SmallVectorExtras.h>
 
 using namespace mlir;
 using namespace mlir::tt;
@@ -1034,6 +1038,24 @@ public:
   }
 };
 
+// TTNN assumes that the input tensor is in NHWC format (channel last). If the
+// input tensor is in NCHW format (channel first), then IR should be
+// transformed from this:
+//   inputs: %arg0: tensor<NxCxHxW>, %dst: tensor<NxCxH'xW'>
+//   %1 = "ttir.upsample"(%arg0, %dst) {channel_last = false}:
+//          (tensor<NxCxHxW>, tensor<NxCxH'xW'>) -> tensor<NxCxH'xW'>
+
+// Into this:
+//   %0 = tensor.empty() : tensor<NxHxWxC>
+//   %1 = "ttir.permute"(%arg0, %0) {permutation = array<i64: 0, 2, 3, 1>}:
+//          (tensor<NxCxHxW>, tensor<NxHxWxC>) -> tensor<NxHxWxC>
+
+//   %2 = tensor.empty() : tensor<NxH'xW'xC>
+//   %3 = "ttir.upsample"(%1, %2) {channel_last = true}:
+//          (tensor<NxHxWxC>, tensor<NxH'xW'xC>) -> tensor<NxH'xW'xC>
+
+//   %4 = "ttir.permute"(%3, %dst) {permutation = array<i64: 0, 3, 1, 2>}:
+//          (tensor<NxH'xW'xC>, tensor<NxCxH'xW'>) -> tensor<NxCxH'xW'>
 class UpsampleToUpsampleConversionPattern
     : public OpConversionPattern<ttir::UpsampleOp> {
 public:
@@ -1042,7 +1064,69 @@ public:
   LogicalResult
   matchAndRewrite(ttir::UpsampleOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    // TODO (azecevic): Waiting for the implementation of PermuteOp (#652)
+    if (adaptor.getChannelLast()) {
+      return success();
+    }
+
+    auto inputType = mlir::cast<RankedTensorType>(adaptor.getInput().getType());
+    llvm::ArrayRef<int64_t> inputShape = inputType.getShape();
+    Type inputElementType = inputType.getElementType();
+    // N(C)(HW) -> N(HW)(C)
+    llvm::SmallVector<int64_t, 4> channelLastInputShape(inputShape);
+    std::rotate(channelLastInputShape.begin() + 1,
+                channelLastInputShape.begin() + 2, channelLastInputShape.end());
+    auto channelLastInputType = RankedTensorType::get(
+        channelLastInputShape, inputElementType, inputType.getEncoding());
+    Attribute inputConstraint = adaptor.getOperandConstraints()[0];
+
+    auto outputType = mlir::cast<RankedTensorType>(op.getType());
+    llvm::ArrayRef<int64_t> outputShape = outputType.getShape();
+    Type outputElementType = outputType.getElementType();
+    // N(C)(H'W') -> N(H'W')(C)
+    llvm::SmallVector<int64_t, 4> channelLastOutputShape(outputShape);
+    std::rotate(channelLastOutputShape.begin() + 1,
+                channelLastOutputShape.begin() + 2,
+                channelLastOutputShape.end());
+    auto channelLastOutputType = RankedTensorType::get(
+        channelLastOutputShape, outputElementType, outputType.getEncoding());
+    Attribute outputConstraint = adaptor.getOperandConstraints()[1];
+
+    // Defines permutation for N(0)C(1)H(2)W(3) -> N(0)H(2)W(3)C(1)
+    // transformation.
+    llvm::SmallVector<int64_t, 4> permutation{0, 2, 3, 1};
+
+    // %0 = tensor.empty() : tensor<NxHxWxC>
+    tensor::EmptyOp channelLastDestination = rewriter.create<tensor::EmptyOp>(
+        op.getLoc(), channelLastInputShape, inputElementType);
+    // %1 = "ttir.permute"(%arg0, %0) {permutation = array<i64: 0, 2, 3, 1>}:
+    // (tensor<NxCxHxW>, tensor<NxHxWxC>) -> tensor<NxHxWxC>
+    ttir::PermuteOp channelLastInput = rewriter.create<ttir::PermuteOp>(
+        op.getLoc(), channelLastInputType, adaptor.getInput(),
+        channelLastDestination, permutation,
+        rewriter.getArrayAttr(
+            llvm::SmallVector<Attribute>(2, inputConstraint)));
+
+    // %2 = tensor.empty() : tensor<NxH'xW'xC>
+    tensor::EmptyOp upsampleDestination = rewriter.create<tensor::EmptyOp>(
+        op.getLoc(), channelLastOutputShape, outputElementType);
+    // %3 = "ttir.upsample"(%1, %2) {channel_last = true}: (tensor<NxHxWxC>,
+    // tensor<NxH'xW'xC>) -> tensor<NxH'xW'xC>
+    ttir::UpsampleOp channelLastUpsample = rewriter.create<ttir::UpsampleOp>(
+        op.getLoc(), channelLastOutputType, channelLastInput,
+        upsampleDestination, adaptor.getScaleFactor(), adaptor.getMode(),
+        /*channel_last=*/true, adaptor.getOperandConstraints());
+
+    // Defines permutation for N(0)H'(1)W'(2)C(3) -> N(0)C(3)H'(1)W'(2)
+    // transformation.
+    permutation = {0, 3, 1, 2};
+
+    // %4 = "ttir.permute"(%3, %dst) {permutation = array<i64: 0, 3, 1, 2>}:
+    // (tensor<NxH'xW'xC>, tensor<NxCxH'xW'>) -> tensor<NxCxH'xW'>
+    rewriter.replaceOpWithNewOp<ttir::PermuteOp>(
+        op, outputType, channelLastUpsample, adaptor.getOutput(), permutation,
+        rewriter.getArrayAttr(
+            SmallVector<Attribute>(op.getOperands().size(), outputConstraint)));
+
     return success();
   }
 };
