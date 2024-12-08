@@ -681,7 +681,6 @@ def TTIR_SoftmaxOp : TTIR_DPSOp<"softmax"> {
     let hasVerifier = 1;
 }
 
-// TODO (azecevic): FOLDABLE
 def TTIR_TransposeOp : TTIR_DPSOp<"transpose"> {
     let summary = "Transpose op.";
     let description = [{
@@ -700,6 +699,8 @@ def TTIR_TransposeOp : TTIR_DPSOp<"transpose"> {
     }];
 
     let hasVerifier = 1;
+
+    let hasCanonicalizer = 1;
 }
 
 def TTIR_ConcatOp : TTIR_DPSOp<"concat"> {
