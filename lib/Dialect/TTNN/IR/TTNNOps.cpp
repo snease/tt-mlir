@@ -9,6 +9,10 @@
 #include "ttmlir/Dialect/TTNN/Utils/Utils.h"
 #include "ttmlir/Utils.h"
 
+#include <llvm/Support/LogicalResult.h>
+#include <llvm/Support/raw_ostream.h>
+#include <mlir/IR/Value.h>
+#include <mlir/Support/LLVM.h>
 #include <optional>
 
 #include "mlir/Dialect/Traits.h"
@@ -596,6 +600,83 @@ static bool isValidDeviceLayout(TensorMemoryLayoutAttr memLayoutAttr) {
     }
   }
   return success();
+}
+
+//===----------------------------------------------------------------------===//
+// ToLayoutOp
+//===----------------------------------------------------------------------===//
+
+// ToLayoutOp canonicalization
+::mlir::LogicalResult
+mlir::tt::ttnn::ToLayoutOp::canonicalize(ToLayoutOp toLayoutOp,
+                                         PatternRewriter &rewriter) {
+  // Check if the parent op operand is tensor type
+  if (!ttmlir::utils::isRankedTensor(toLayoutOp->getOperand(0))) {
+    llvm::outs() << ">>>> Parent op operand is not tensor type\n";
+    return mlir::failure();
+  }
+
+  // Get parent op operand layout attribute
+  RankedTensorType parentRankedTensorType =
+      mlir::cast<RankedTensorType>(toLayoutOp->getOperand(0).getType());
+
+  llvm::outs() << ">>>> To Layout OP:" << toLayoutOp << "\n";
+  llvm::outs() << ">>>> To Layout OP:" << toLayoutOp->getOperand(0) << "\n";
+
+  TTNNLayoutAttr parentLayoutAttr =
+      mlir::cast<TTNNLayoutAttr>(parentRankedTensorType.getEncoding());
+
+  llvm::outs() << ">>>> Parent Layout Attr:" << parentLayoutAttr << "\n";
+  llvm::outs() << ">>>> To Layout OP Layout Attr:" << toLayoutOp.getLayoutAttr()
+               << "\n";
+
+  if (parentLayoutAttr == toLayoutOp.getLayoutAttr() &&
+      toLayoutOp->getResult(0).hasOneUse()) {
+    // Remove redundant ToLayoutOp
+    llvm::outs() << ">>>> Removing redundant ToLayoutOp\n";
+    rewriter.replaceAllUsesWith(toLayoutOp->getOperand(0),
+                                toLayoutOp->getResult(0));
+    rewriter.eraseOp(toLayoutOp);
+    return mlir::success();
+  }
+
+  // Get the input operand and verify that the parent input is toLayoutOp
+  ToLayoutOp parentToLayoutOp =
+      toLayoutOp.getOperand(0).getDefiningOp<ToLayoutOp>();
+
+  // Verify that the parent op is ToLayoutOp
+  if (!parentToLayoutOp) {
+    llvm::outs() << ">>>> Parent op is not ToLayoutOp\n";
+    return mlir::failure();
+  }
+
+  llvm::outs() << ">>>> Parent To Layout OP:" << parentToLayoutOp << "\n";
+
+  // Check if the parent op has only one use. We can only fold or merge if the
+  // parent op has only one use.
+  if (!parentToLayoutOp->hasOneUse()) {
+    return mlir::failure();
+  }
+
+  // Verify that the parent op has only one use
+  if (!parentToLayoutOp.getResult().hasOneUse()) {
+    return mlir::failure();
+  }
+
+  Value mergedToLayout = rewriter.replaceOpWithNewOp<ToLayoutOp>(
+      parentToLayoutOp, toLayoutOp.getType(), parentToLayoutOp.getInput(),
+      toLayoutOp.getLayoutAttr(),
+      toLayoutOp.getDtypeAttr() ? toLayoutOp.getDtypeAttr()
+                                : parentToLayoutOp.getDtypeAttr(),
+      toLayoutOp.getMemoryConfigAttr() ? toLayoutOp.getMemoryConfigAttr()
+                                       : parentToLayoutOp.getMemoryConfigAttr(),
+      toLayoutOp.getDevice());
+
+  rewriter.replaceAllUsesWith(toLayoutOp, mergedToLayout);
+
+  rewriter.eraseOp(toLayoutOp);
+
+  return mlir::success();
 }
 
 //===----------------------------------------------------------------------===//

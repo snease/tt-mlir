@@ -57,6 +57,12 @@ WorkaroundResult applyWorkarounds(const TTNNOperandWorkarounds &workaround,
       result.targetTensorMemoryLayoutResult.first !=
       inputLayoutAttr.getMemLayoutOpt();
 
+  result.targetTensorDataTypeResult.first =
+      workaround.tensorDataTypeWorkaround.value_or(
+          inputLayoutAttr.getDataType());
+  result.targetTensorDataTypeResult.second =
+      result.targetTensorDataTypeResult.first != inputLayoutAttr.getDataType();
+
   return result;
 }
 
@@ -70,5 +76,18 @@ TTNNOperandsWorkarounds::createEmptyTTNNOperandsWorkarounds(Operation *op) {
 
   return TTNNOperandsWorkarounds::createEmptyTTNNOperandsWorkarounds(
       tensorInputs, tensorResults);
+}
+
+TTNNOperandsWorkarounds
+TTNNOperandsWorkaroundsFactory::createEmbeddingOpOperandsWorkarounds() {
+  TTNNOperandWorkarounds inputWorkaround;
+  inputWorkaround.tensorLayoutWorkaround = Layout::RowMajor;
+  TTNNOperandWorkarounds weightWorkaround;
+  weightWorkaround.tensorDataTypeWorkaround = DataType::BFloat16;
+  return TTNNOperandsWorkarounds::createEmptyTTNNOperandsWorkarounds(0, 0)
+      .addInputOperandWorkaround(inputWorkaround)
+      .addInputOperandWorkaround(weightWorkaround)
+      .addInputOperandWorkaround(weightWorkaround)
+      .addOutputOperandWorkaround(weightWorkaround);
 }
 } // namespace mlir::tt::ttnn::wa

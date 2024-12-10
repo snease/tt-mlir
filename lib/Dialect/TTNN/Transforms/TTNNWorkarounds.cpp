@@ -61,12 +61,13 @@ static mlir::Value
 createToLayoutOp(wa::TTNNWorkaroundInterface &op, OpOperand &inputOperand,
                  PatternRewriter &rewriter, Layout targetTensorLayout,
                  BufferType targetTensorBufferType,
-                 std::optional<TensorMemoryLayout> targetTensorMemoryLayout) {
+                 std::optional<TensorMemoryLayout> targetTensorMemoryLayout,
+                 DataType targetDataType) {
   TTNNLayoutAttr inputLayoutAttr = getLayoutAttrFromOpOperand(inputOperand);
 
   // Create element type based on tensor layout.
-  Type elementType = getElementType(rewriter.getContext(), targetTensorLayout,
-                                    inputLayoutAttr.getDataType());
+  Type elementType =
+      getElementType(rewriter.getContext(), targetTensorLayout, targetDataType);
 
   // Create tensor memory layout attribute.
   ttnn::TensorMemoryLayoutAttr outputMemLayoutAttr =
@@ -103,8 +104,7 @@ createToLayoutOp(wa::TTNNWorkaroundInterface &op, OpOperand &inputOperand,
                                     outputMemLayoutAttr)),
           inputOperand.get(),
           LayoutAttr::get(rewriter.getContext(), targetTensorLayout),
-          DataTypeAttr::get(rewriter.getContext(),
-                            inputLayoutAttr.getDataType()),
+          DataTypeAttr::get(rewriter.getContext(), targetDataType),
           outputMemConfigAttr,
           (targetTensorBufferType == ttnn::BufferType::SystemMemory)
               ? nullptr
@@ -137,7 +137,8 @@ static bool workaroundInputOperand(
       op, inputOperand, rewriter,
       inputWorkaroundResult.targetTensorLayoutResult.first,
       inputWorkaroundResult.targetTensorBufferTypeResult.first,
-      inputWorkaroundResult.targetTensorMemoryLayoutResult.first);
+      inputWorkaroundResult.targetTensorMemoryLayoutResult.first,
+      inputWorkaroundResult.targetTensorDataTypeResult.first);
 
   // Insert to layout op between the current op and the input operand
   // to convert the input operand to the desired tensor layout, buffer type.
@@ -185,7 +186,7 @@ static bool workaroundOutputOperand(
   Type elementType =
       getElementType(rewriter.getContext(),
                      outputWorkaroundResult.targetTensorLayoutResult.first,
-                     opResultLayoutAttr.getDataType());
+                     outputWorkaroundResult.targetTensorDataTypeResult.first);
 
   // Get the input operand type.
   RankedTensorType opResultType =
@@ -223,6 +224,13 @@ static bool workaroundOutputOperand(
       LayoutAttr updatedLayoutAttr = rewriter.getAttr<LayoutAttr>(
           outputWorkaroundResult.targetTensorLayoutResult.first);
       op->setAttr("layout", updatedLayoutAttr);
+    }
+
+    if (outputWorkaroundResult.targetTensorDataTypeResult.second &&
+        op->getAttrDictionary().get("data_type")) {
+      DataTypeAttr updatedDataTypeAttr = rewriter.getAttr<DataTypeAttr>(
+          outputWorkaroundResult.targetTensorDataTypeResult.first);
+      op->setAttr("data_type", updatedDataTypeAttr);
     }
 
     if ((outputWorkaroundResult.targetTensorBufferTypeResult.second ||

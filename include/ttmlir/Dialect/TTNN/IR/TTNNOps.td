@@ -61,6 +61,8 @@ def TTNN_ToLayoutOp : TTNN_Op<"to_layout"> {
                          OptionalAttr<TTNN_MemoryConfigAttr>:$memory_config,
                          Optional<TT_Device>:$device);
     let results = (outs AnyRankedTensor:$result);
+
+    let hasCanonicalizeMethod = 1;
 }
 
 def TTNN_TypecastOp : TTNN_Op<"typecast"> {
@@ -572,6 +574,9 @@ def TTNN_EmbeddingOp : TTNN_NamedDPSOp<"embedding"> {
 
     let extraClassDeclaration = [{
       MutableOperandRange getDpsInitsMutable() { return getOutputMutable(); }
+      wa::TTNNOperandsWorkarounds getOperandsWorkarounds() {
+        return wa::TTNNOperandsWorkaroundsFactory::createEmbeddingOpOperandsWorkarounds();
+      }
     }];
 
     let hasVerifier = 1;
