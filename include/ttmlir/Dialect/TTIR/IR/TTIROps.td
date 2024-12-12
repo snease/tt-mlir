@@ -356,7 +356,6 @@ def TTIR_SqrtOp : TTIR_ElementwiseUnaryOp<"sqrt"> {
     }];
 }
 
-// TODO (azecevic): FOLDABLE
 def TTIR_TypecastOp: TTIR_ElementwiseUnaryOp<"typecast"> {
     let summary = "Eltwise cast op.";
     let description = [{
@@ -1287,6 +1286,8 @@ def TTIR_AddOp : TTIR_GenericElementwiseBinaryOp<"add"> {
     let description = [{
       Eltwise add operation.
     }];
+
+    let hasFolder = 1;
 }
 
 def TTIR_MultiplyOp : TTIR_GenericElementwiseBinaryOp<"multiply"> {
@@ -1294,6 +1295,8 @@ def TTIR_MultiplyOp : TTIR_GenericElementwiseBinaryOp<"multiply"> {
     let description = [{
       Eltwise multiply operation.
     }];
+
+    let hasFolder = 1;
 }
 
 def TTIR_DivOp : TTIR_GenericElementwiseBinaryOp<"div"> {
