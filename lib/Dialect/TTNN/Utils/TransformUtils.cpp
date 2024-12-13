@@ -6,6 +6,7 @@
 
 #include "ttmlir/Dialect/TT/IR/TTOpsTypes.h"
 #include "ttmlir/Dialect/TTNN/IR/TTNNOps.h"
+#include <llvm/ADT/SmallVector.h>
 
 namespace mlir::tt::ttnn::utils {
 // Gets or inserts a GetDeviceOp at the top of the current block of the given
@@ -21,7 +22,7 @@ Value getOrInsertDevice(PatternRewriter &rewriter, Operation *op) {
   DeviceAttr deviceAttr = getCurrentScopeDevice(op);
   auto currentInsertionPoint = rewriter.saveInsertionPoint();
   rewriter.setInsertionPoint(block, block->begin());
-  auto meshShape = deviceAttr.getMeshShape();
+  llvm::SmallVector<int64_t> meshShape{deviceAttr.getMeshShape()};
   if (meshShape.empty()) {
     meshShape = llvm::SmallVector<int64_t, 2>{1, 1};
   }
