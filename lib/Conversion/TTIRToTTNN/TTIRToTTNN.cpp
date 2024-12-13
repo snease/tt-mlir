@@ -950,23 +950,13 @@ public:
     output_ty = mlir::cast<RankedTensorType>(getTypeConverter()->convertType(
         output_ty.cloneWith(flattenedOutputShape, output_ty.getElementType())));
 
-    // Replace output tensor empty with new empty op with correct output
-    // shape
-    auto poolDPSOutput = rewriter.replaceOpWithNewOp<tensor::EmptyOp>(
-        adaptor.getOutput().getDefiningOp(), flattenedOutputShape,
-        output_ty.getElementType());
-
-    // Must set the type to the output type to maintain the layout attributes
-    poolDPSOutput.getResult().setType(output_ty);
-
     auto new_pool = rewriter.create<ttnn::MaxPool2dOp>(
-        op.getLoc(), output_ty, flattenedInput, poolDPSOutput, device,
-        batch_size, input_height, input_width, channels,
-        adaptor.getKernelHeightAttr(), adaptor.getKernelWidthAttr(),
-        adaptor.getStrideHeightAttr(), adaptor.getStrideWidthAttr(),
-        adaptor.getDilationHeightAttr(), adaptor.getDilationWidthAttr(),
-        adaptor.getCeilModeAttr(), adaptor.getPaddingTopAttr(),
-        adaptor.getPaddingRightAttr());
+        op.getLoc(), output_ty, flattenedInput, device, batch_size,
+        input_height, input_width, channels, adaptor.getKernelHeightAttr(),
+        adaptor.getKernelWidthAttr(), adaptor.getStrideHeightAttr(),
+        adaptor.getStrideWidthAttr(), adaptor.getDilationHeightAttr(),
+        adaptor.getDilationWidthAttr(), adaptor.getCeilModeAttr(),
+        adaptor.getPaddingTopAttr(), adaptor.getPaddingRightAttr());
 
     llvm::SmallVector<int64_t> intermediateShape = {
         output_shape[0], output_shape[2], output_shape[3], output_shape[1]};
