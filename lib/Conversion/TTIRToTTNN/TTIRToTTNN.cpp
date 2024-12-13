@@ -773,6 +773,46 @@ public:
 };
 // ANCHOR_END: adding_an_op_matmul_op_rewriter
 
+// TODO (milant): this should return ttir reshape
+static ttnn::ReshapeOp generateReshape(Value input,
+                                       const SmallVector<int64_t> &newShape,
+                                       PatternRewriter &rewriter) {
+  auto inputType = mlir::cast<RankedTensorType>(input.getType());
+  auto outputType = inputType.cloneWith(newShape, inputType.getElementType());
+
+  SmallVector<int32_t> newShapeI32(newShape.begin(), newShape.end());
+  return rewriter.create<ttnn::ReshapeOp>(
+      input.getLoc(), outputType, input, rewriter.getI32ArrayAttr(newShapeI32));
+}
+
+// Generate Permute op for input tensor
+static ttnn::PermuteOp generatePermute(Value input,
+                                       ArrayRef<int64_t> permuteDims,
+                                       PatternRewriter &rewriter) {
+  auto inputType = mlir::cast<RankedTensorType>(input.getType());
+  llvm::ArrayRef<int64_t> inputShape = inputType.getShape();
+  llvm::SmallVector<int64_t, 4> newShape = {
+      inputShape[permuteDims[0]], inputShape[permuteDims[1]],
+      inputShape[permuteDims[2]], inputShape[permuteDims[3]]};
+  auto outputType = inputType.cloneWith(newShape, inputType.getElementType());
+  return rewriter.create<ttnn::PermuteOp>(input.getLoc(), outputType, input,
+                                          permuteDims);
+}
+
+// Used by MaxPool conversion
+// If input into maxpool is tensor with shape [N, C, H, W], this function
+// will create rehape op which will change the shape to [1, 1, N * H * W, C]
+// since max pool expects that channel dim is the last dim
+static ttnn::ReshapeOp generateInputForMaxPool(Value input,
+                                               PatternRewriter &rewriter) {
+  SmallVector<int64_t> shape{
+      mlir::cast<RankedTensorType>(input.getType()).getShape()};
+
+  SmallVector<int64_t> newShape = {1, 1, shape[0] * shape[1] * shape[2],
+                                   shape[3]};
+  return generateReshape(input, newShape, rewriter);
+}
+
 class Conv2dOpConversionPattern : public OpConversionPattern<ttir::Conv2dOp> {
 public:
   using OpConversionPattern<ttir::Conv2dOp>::OpConversionPattern;
@@ -885,27 +925,33 @@ public:
     auto input_ty = mlir::cast<RankedTensorType>(adaptor.getInput().getType());
     llvm::ArrayRef<std::int64_t> input_shape = input_ty.getShape();
 
-    auto batch_size =
+    IntegerAttr batch_size =
         rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 4]);
-    auto channels =
+    IntegerAttr channels =
+        rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 3]);
+    IntegerAttr input_height =
+        rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 2]);
+    IntegerAttr input_width =
         rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 1]);
 
-    Value flattenedInput =
-        ttir_to_ttnn::utils::generateNHWFlatten(adaptor.getInput(), rewriter);
+    llvm::SmallVector<int64_t, 4> permuteDims = {0, 2, 3, 1};
+    Value permutedInput =
+        generatePermute(adaptor.getInput(), permuteDims, rewriter);
+    Value flattenedInput = generateInputForMaxPool(permutedInput, rewriter);
 
     auto output_ty =
         mlir::cast<RankedTensorType>(adaptor.getOutput().getType());
     llvm::ArrayRef<std::int64_t> output_shape = output_ty.getShape();
 
     std::vector<int64_t> flattenedOutputShape = {
-        1, 1, output_shape[0] * output_shape[1] * output_shape[2],
-        output_shape[3]};
+        1, 1, output_shape[0] * output_shape[2] * output_shape[3],
+        output_shape[1]};
 
     output_ty = mlir::cast<RankedTensorType>(getTypeConverter()->convertType(
         output_ty.cloneWith(flattenedOutputShape, output_ty.getElementType())));
 
-    // Using a tensor::EmptyOp so that the rewriter for EmptyOp can handle the
-    // attribute determination
+    // Replace output tensor empty with new empty op with correct output
+    // shape
     auto poolDPSOutput = rewriter.replaceOpWithNewOp<tensor::EmptyOp>(
         adaptor.getOutput().getDefiningOp(), flattenedOutputShape,
         output_ty.getElementType());
@@ -915,17 +961,20 @@ public:
 
     auto new_pool = rewriter.create<ttnn::MaxPool2dOp>(
         op.getLoc(), output_ty, flattenedInput, poolDPSOutput, device,
-        batch_size,
-        rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 3]),
-        rewriter.getSI32IntegerAttr(input_shape[input_shape.size() - 2]),
-        channels, adaptor.getKernelHeightAttr(), adaptor.getKernelWidthAttr(),
+        batch_size, input_height, input_width, channels,
+        adaptor.getKernelHeightAttr(), adaptor.getKernelWidthAttr(),
         adaptor.getStrideHeightAttr(), adaptor.getStrideWidthAttr(),
         adaptor.getDilationHeightAttr(), adaptor.getDilationWidthAttr(),
         adaptor.getCeilModeAttr(), adaptor.getPaddingTopAttr(),
         adaptor.getPaddingRightAttr());
 
+    llvm::SmallVector<int64_t> intermediateShape = {
+        output_shape[0], output_shape[2], output_shape[3], output_shape[1]};
+    llvm::SmallVector<int64_t> permuteBackDims = {0, 3, 1, 2};
+    Value intermediateOutput =
+        generateReshape(new_pool, intermediateShape, rewriter);
     Value output =
-        ttir_to_ttnn::utils::generateReshape(new_pool, output_shape, rewriter);
+        generatePermute(intermediateOutput, permuteBackDims, rewriter);
 
     rewriter.replaceOp(op, output);
 
