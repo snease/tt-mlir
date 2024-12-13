@@ -284,7 +284,7 @@ def TTNN_ReciprocalOp : TTNN_ElementwiseUnaryOp<"reciprocal"> {
 }
 
 def TTNN_ReluOp : TTNN_ElementwiseUnaryOp<"relu",
-      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpL1Usage", "isOpLegal"]>]
+      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpConstraints"]>]
       > {
     let summary = "Eltwise ReLU.";
     let description = [{
@@ -394,7 +394,7 @@ def TTNN_LeakyReluOp : TTNN_ElementwiseUnaryWithFloatParameterOp<"leaky_relu"> {
 }
 
 def TTNN_AddOp : TTNN_ElementwiseBinaryOp<"add",
-      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpL1Usage", "isOpLegal"]>]
+      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpConstraints"]>]
       > {
 
     let summary = "Eltwise add.";
@@ -608,7 +608,7 @@ def TTNN_FillCacheOp : TTNN_InplaceOp<"fill_cache"> {
 }
 
 def TTNN_SoftmaxOp : TTNN_Op<"softmax",
-      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpL1Usage", "isOpLegal"]>]
+      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpConstraints"]>]
       > {
 
     let summary = "Softmax op.";
@@ -724,7 +724,7 @@ def TTNN_LinearOp : TTNN_NamedDPSOp<"linear"> {
 
 // ANCHOR: adding_an_op_matmul_ttnn
 def TTNN_MatmulOp : TTNN_NamedDPSOp<"matmul",
-      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpL1Usage", "isOpLegal"]>]
+      [DeclareOpInterfaceMethods<TTNN_OpModelInterface, ["getOpConstraints"]>]
       > {
     let arguments = (ins AnyRankedTensor:$a,
                          AnyRankedTensor:$b,
