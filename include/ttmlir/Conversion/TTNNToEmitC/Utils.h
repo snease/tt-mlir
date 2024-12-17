@@ -12,7 +12,11 @@
 
 namespace mlir::tt::ttnn_to_emitc::utils {
 
-// TODO
+inline constexpr char kCreateVectorFunctionName[] = "utilCreateVec";
+
+// Inserts a func::FuncOp to top of the caller's module that takes in a variadic
+// number of `ttnn::Tensor`s and returns them packed into a `std::vector`
+//
 bool insertVecCreateFnIfNotExists(PatternRewriter &rewriter, Operation *op);
 
 // Create emitc::OpaqueAttr for ttnn::Shape

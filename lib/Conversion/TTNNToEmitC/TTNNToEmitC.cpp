@@ -621,14 +621,15 @@ public:
   LogicalResult
   matchAndRewrite(tt::TupleOp tupleOp, tt::TupleOp::Adaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    // Try to find if "util_create_vec" function is already defined in the
+    // Try to find if utility vec creation function is already defined in the
     // module. If not, insert it.
     //
     ttnn_to_emitc::utils::insertVecCreateFnIfNotExists(rewriter, tupleOp);
 
     rewriter.replaceOpWithNewOp<emitc::CallOpaqueOp>(
         tupleOp, this->getTypeConverter()->convertType(tupleOp.getType()),
-        "util_create_vec", nullptr, nullptr, adaptor.getOperands());
+        ttnn_to_emitc::utils::kCreateVectorFunctionName, nullptr, nullptr,
+        adaptor.getOperands());
     return success();
   }
 };
@@ -792,14 +793,14 @@ void populateTTNNToEmitCPatterns(mlir::MLIRContext *ctx,
   //
   patterns.add<ArithConstantOpConversionPattern>(typeConverter, ctx);
 
-  // Module op
-  //
-  patterns.add<ModuleOpConversionPattern>(typeConverter, ctx);
-
   // Tuple ops
   //
   patterns.add<GetTupleElementOpConversionPattern>(typeConverter, ctx);
   patterns.add<TupleOpConversionPattern>(typeConverter, ctx);
+
+  // Module op
+  //
+  patterns.add<ModuleOpConversionPattern>(typeConverter, ctx);
 }
 
 } // namespace mlir::tt
