@@ -1186,6 +1186,13 @@ void addTransposeOpsConversionPatterns(MLIRContext *ctx,
   patterns.add<StableHLOToTTIRTransposeOpConversionPattern>(typeConverter, ctx);
 }
 
+void addDotGeneralOpsConversionPatterns(MLIRContext *ctx,
+                                        RewritePatternSet &patterns,
+                                        TypeConverter &typeConverter) {
+  patterns.add<StableHLOToTTIRDotGeneralOpConversionPattern>(typeConverter,
+                                                             ctx);
+}
+
 void addMatmulOpsConversionPatterns(MLIRContext *ctx,
                                     RewritePatternSet &patterns,
                                     TypeConverter &typeConverter) {
@@ -1282,6 +1289,7 @@ void populateStableHLOToTTIRPatterns(MLIRContext *ctx,
   addElementwiseBinaryOpsConversionPatterns(ctx, patterns, typeConverter);
   addReduceOpsConversionPatterns(ctx, patterns, typeConverter);
   addTransposeOpsConversionPatterns(ctx, patterns, typeConverter);
+  addDotGeneralOpsConversionPatterns(ctx, patterns, typeConverter);
   addMatmulOpsConversionPatterns(ctx, patterns, typeConverter);
   addGetDimensionSizeOpsConversionPatterns(ctx, patterns, typeConverter);
   addTensorCreationOpsConversionPatterns(ctx, patterns, typeConverter);
